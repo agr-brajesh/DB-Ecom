@@ -1,10 +1,10 @@
 """
-Supabase PostgreSQL Migration Executor
-Executes database/supabase_migration.sql against your remote Supabase database.
+Supabase PostgreSQL Migration Runner
+Connects to Supabase on region ap-southeast-2 and applies database/supabase_migration.sql
 """
 
 import os
-import sys
+import psycopg2
 from dotenv import load_dotenv
 
 # Load .env
@@ -12,68 +12,78 @@ load_dotenv()
 
 SQL_FILE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "supabase_migration.sql")
 SUPABASE_URL = os.getenv("NEXT_PUBLIC_SUPABASE_URL", "")
-PROJECT_REF = SUPABASE_URL.replace("https://", "").replace(".supabase.co", "").strip()
+PROJECT_REF = "kxipulbczlqfenntmqzv"
+DB_PASSWORD = os.getenv("SUPABASE_DB_PASSWORD")
 
-DB_PASSWORD = os.getenv("SUPABASE_DB_PASSWORD") or os.getenv("DATABASE_PASSWORD")
-DATABASE_URL = os.getenv("DATABASE_URL")
-SERVICE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+if not DB_PASSWORD:
+    print("[!] Error: SUPABASE_DB_PASSWORD not found in .env")
+    exit(1)
 
-def print_manual_instructions():
+# Supabase ap-southeast-2 host
+HOST = "aws-0-ap-southeast-2.pooler.supabase.com"
+USER = f"postgres.{PROJECT_REF}"
+PORT = 5432  # Session pooler for clean DDL execution
+
+print("=" * 65)
+print(" EXECUTING REMOTE SUPABASE MIGRATION")
+print("=" * 65)
+print(f"[*] Connecting to {HOST}:{PORT}...")
+print(f"[*] Target Tenant: {USER}")
+
+try:
+    conn = psycopg2.connect(
+        host=HOST,
+        port=PORT,
+        user=USER,
+        password=DB_PASSWORD,
+        dbname="postgres",
+        connect_timeout=15,
+        sslmode="require"
+    )
+    conn.autocommit = True
+    cursor = conn.cursor()
+    print("[+] Connected to Supabase PostgreSQL database successfully!")
+
+    print(f"[*] Reading migration script: {SQL_FILE_PATH}...")
+    with open(SQL_FILE_PATH, "r", encoding="utf-8") as f:
+        sql_script = f.read()
+
+    print("[*] Applying schema, tables, triggers, views, RLS policies, and seed data...")
+    cursor.execute(sql_script)
+    print("[+] Migration executed successfully!")
+
+    # Verify tables created
+    cursor.execute("""
+        SELECT table_name 
+        FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        ORDER BY table_name;
+    """)
+    tables = [row[0] for row in cursor.fetchall()]
+    print(f"\n[+] Verified Tables in Supabase ({len(tables)} created):")
+    for t in tables:
+        cursor.execute(f"SELECT COUNT(*) FROM {t};")
+        cnt = cursor.fetchone()[0]
+        print(f"    - {t}: {cnt} rows")
+
+    # Verify views created
+    cursor.execute("""
+        SELECT table_name 
+        FROM information_schema.views 
+        WHERE table_schema = 'public' 
+        ORDER BY table_name;
+    """)
+    views = [row[0] for row in cursor.fetchall()]
+    print(f"\n[+] Verified Analytical Views in Supabase ({len(views)} created):")
+    for v in views:
+        print(f"    - {v}")
+
+    cursor.close()
+    conn.close()
     print("\n" + "=" * 65)
-    print(" HOW TO APPLY THE MIGRATION TO SUPABASE (1-CLICK)")
+    print(" ALL MIGRATIONS HAVE BEEN PUSHED TO SUPABASE SUCCESSFULLY!")
     print("=" * 65)
-    print("Supabase client publishable keys (sb_publishable_...) do not have")
-    print("permission to execute DDL (CREATE TABLE).")
-    print("\nTo apply the migration in 5 seconds:")
-    print(f"1. Open your Supabase Dashboard SQL Editor:")
-    print(f"   -> https://supabase.com/dashboard/project/{PROJECT_REF}/sql/new")
-    print("2. Copy all contents from:")
-    print(f"   -> database/supabase_migration.sql")
-    print("3. Paste into the SQL Editor and click 'RUN'.")
-    print("\n-------------------------------------------------------------")
-    print("OR AUTOMATE IT VIA TERMINAL:")
-    print("Add your database password to your .env file:")
-    print("   SUPABASE_DB_PASSWORD=your_database_password_here")
-    print("Then re-run: python database/migrate_supabase.py")
-    print("=" * 65 + "\n")
 
-def run_migration_with_psycopg():
-    try:
-        import psycopg2
-    except ImportError:
-        print("[!] psycopg2 not found. Install it with: pip install psycopg2-binary")
-        return False
-
-    conn_string = DATABASE_URL
-    if not conn_string and DB_PASSWORD:
-        # Standard Supabase transaction pooler URL
-        conn_string = f"postgresql://postgres.{PROJECT_REF}:{DB_PASSWORD}@aws-0-ap-south-1.pooler.supabase.com:6543/postgres"
-
-    if not conn_string:
-        return False
-
-    print(f"[*] Connecting to Supabase PostgreSQL at {PROJECT_REF}...")
-    try:
-        with open(SQL_FILE_PATH, "r", encoding="utf-8") as f:
-            sql_content = f.read()
-
-        conn = psycopg2.connect(conn_string, connect_timeout=15)
-        conn.autocommit = True
-        cursor = conn.cursor()
-        print("[*] Applying supabase_migration.sql...")
-        cursor.execute(sql_content)
-        cursor.close()
-        conn.close()
-        print("[SUCCESS] Schema migrated successfully to remote Supabase PostgreSQL!")
-        return True
-    except Exception as e:
-        print(f"[!] PostgreSQL Migration Error: {e}")
-        return False
-
-if __name__ == "__main__":
-    if DB_PASSWORD or DATABASE_URL:
-        success = run_migration_with_psycopg()
-        if not success:
-            print_manual_instructions()
-    else:
-        print_manual_instructions()
+except Exception as e:
+    print(f"\n[!] Migration failed with error: {e}")
+    exit(1)
