@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NexusAI | E-Commerce DBMS & Product Recommendation Engine</title>
+    <meta name="description" content="AI-Based E-Commerce Database system with Apriori Market Basket Analysis, 3NF Relational Schema, and ACID Transactions.">
+    <!-- Google Fonts: Outfit & Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Top Navigation Bar -->
+    <header class="navbar">
+        <div class="nav-left">
+            <div class="logo">
+                <div class="logo-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                    </svg>
+                </div>
+                <div class="logo-text">
+                    <span class="brand-title">NexusAI</span>
+                    <span class="brand-subtitle">DBMS + Apriori Engine</span>
+                </div>
+            </div>
+
+            <!-- Customer Switcher -->
+            <div class="customer-picker-wrapper">
+                <label for="customerSelect"><span class="pulse-dot"></span> Active Customer:</label>
+                <select id="customerSelect" class="customer-select">
+                    <!-- Populated dynamically via JS -->
+                </select>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <nav class="nav-tabs">
+            <button class="tab-btn active" data-tab="recommendations">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/>
+                </svg>
+                AI Recommendations
+            </button>
+            <button class="tab-btn" data-tab="catalog">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="7" height="7"/>
+                    <rect x="14" y="3" width="7" height="7"/>
+                    <rect x="14" y="14" width="7" height="7"/>
+                    <rect x="3" y="14" width="7" height="7"/>
+                </svg>
+                Catalog (8 Domains)
+            </button>
+            <button class="tab-btn" data-tab="rules">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                </svg>
+                Apriori Rules
+            </button>
+            <button class="tab-btn" data-tab="dbms">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <ellipse cx="12" cy="5" rx="9" ry="3"/>
+                    <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+                    <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+                </svg>
+                DBMS Views & SQL
+            </button>
+        </nav>
+
+        <!-- Right Side: Cart Trigger -->
+        <div class="nav-right">
+            <button id="cartToggleBtn" class="cart-btn" aria-label="View Shopping Cart">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="9" cy="21" r="1"/>
+                    <circle cx="20" cy="21" r="1"/>
+                    <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+                </svg>
+                <span class="cart-label">Cart</span>
+                <span id="cartCountBadge" class="cart-badge">0</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="main-container">
+
+        <!-- TAB 1: AI RECOMMENDATIONS VIEW -->
+        <section id="tab-recommendations" class="tab-content active">
+            <!-- Hero Banner with Customer Status -->
+            <div class="customer-hero-card">
+                <div class="customer-meta">
+                    <div class="avatar-circle" id="heroAvatar">AR</div>
+                    <div>
+                        <h2 id="heroCustomerName">Alex Rivera</h2>
+                        <p id="heroCustomerMeta" class="sub-meta">Customer ID: <strong id="heroCustomerId">C101</strong> • Seattle • alex.rivera@example.com</p>
+                    </div>
+                </div>
+
+                <div class="customer-context-badges">
+                    <div class="context-pill">
+                        <span class="pill-label">Past Orders</span>
+                        <span id="heroOrderCount" class="pill-value">1</span>
+                    </div>
+                    <div class="context-pill">
+                        <span class="pill-label">Items in Cart</span>
+                        <span id="heroCartCount" class="pill-value">1</span>
+                    </div>
+                    <div class="context-pill highlight">
+                        <span class="pill-label">AI Status</span>
+                        <span class="pill-value"><span class="sparkle">⚡</span> Active Rules</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Customer Purchase History & Current Cart Stream -->
+            <div class="grid-two-cols">
+                <div class="glass-panel">
+                    <div class="panel-header">
+                        <h3>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                            Customer Purchase History (From DBMS)
+                        </h3>
+                        <span class="badge-subtle">Completed Orders</span>
+                    </div>
+                    <div id="historyList" class="compact-item-list">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <div class="glass-panel">
+                    <div class="panel-header">
+                        <h3>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="9" cy="21" r="1"/>
+                                <circle cx="20" cy="21" r="1"/>
+                                <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+                            </svg>
+                            Active Shopping Cart (Real-Time Antecedents)
+                        </h3>
+                        <span class="badge-subtle">In Cart</span>
+                    </div>
+                    <div id="activeCartList" class="compact-item-list">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recommended Products Section -->
+            <div class="recommendations-section">
+                <div class="section-title-wrap">
+                    <div>
+                        <h2 class="section-title">
+                            <span class="gradient-text">Top Recommended Products</span>
+                        </h2>
+                        <p class="section-desc">Mined using Apriori Association Rules ($X \to Y$) & Cosine Similarity on active customer history</p>
+                    </div>
+                    <button id="refreshRecsBtn" class="btn-outline">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M23 4v6h-6M1 20v-6h6"/>
+                            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                        </svg>
+                        Recalculate
+                    </button>
+                </div>
+
+                <!-- Live Recommendation Cards Grid -->
+                <div id="recommendationsGrid" class="cards-grid">
+                    <!-- Populated dynamically via JS -->
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 2: PRODUCT CATALOG (8 DOMAINS) -->
+        <section id="tab-catalog" class="tab-content">
+            <div class="section-title-wrap">
+                <div>
+                    <h2 class="section-title">Full Product Catalog</h2>
+                    <p class="section-desc">45 items across 8 distinct consumer and professional electronics domains</p>
+                </div>
+                <div class="search-wrap">
+                    <input type="text" id="catalogSearchInput" placeholder="Search catalog by name, brand, or tag..." class="input-field">
+                </div>
+            </div>
+
+            <!-- Category Filter Pills -->
+            <div id="categoryFilterBar" class="filter-pills-bar">
+                <button class="pill active" data-cat="">All Categories (45)</button>
+                <!-- Dynamically populated -->
+            </div>
+
+            <!-- Catalog Products Grid -->
+            <div id="catalogGrid" class="cards-grid">
+                <!-- Populated dynamically via JS -->
+            </div>
+        </section>
+
+        <!-- TAB 3: APRIORI RULES EXPLORER -->
+        <section id="tab-rules" class="tab-content">
+            <div class="section-title-wrap">
+                <div>
+                    <h2 class="section-title">Apriori Association Rule Miner</h2>
+                    <p class="section-desc">Inspect statistical market basket associations discovered across all completed transactions</p>
+                </div>
+            </div>
+
+            <div class="glass-panel rule-controls-panel">
+                <div class="control-row">
+                    <div class="slider-group">
+                        <label for="minConfSlider">Minimum Confidence: <span id="confValueDisplay" class="bold-val">60%</span></label>
+                        <input type="range" id="minConfSlider" min="0.4" max="1.0" step="0.05" value="0.6">
+                    </div>
+                    <div class="slider-group">
+                        <label for="minLiftSlider">Minimum Lift: <span id="liftValueDisplay" class="bold-val">1.5x</span></label>
+                        <input type="range" id="minLiftSlider" min="1.0" max="15.0" step="0.5" value="1.5">
+                    </div>
+                    <button id="applyRuleFilterBtn" class="btn-primary">Apply Filters</button>
+                </div>
+            </div>
+
+            <div class="glass-panel">
+                <div class="table-responsive">
+                    <table class="data-table" id="rulesTable">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Antecedent Item(s) ($X$)</th>
+                                <th></th>
+                                <th>Consequent Recommended ($Y$)</th>
+                                <th>Support</th>
+                                <th>Confidence</th>
+                                <th>Lift</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rulesTableBody">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 4: DBMS VIEWS & LIVE SQL RUNNER -->
+        <section id="tab-dbms" class="tab-content">
+            <div class="section-title-wrap">
+                <div>
+                    <h2 class="section-title">DBMS Relational Views & Live Query Runner</h2>
+                    <p class="section-desc">Verify 3NF schema, analytical views (`v_market_basket`, `v_customer_purchase_summary`), and indexes</p>
+                </div>
+            </div>
+
+            <!-- View Selector Tabs -->
+            <div class="view-selector-bar">
+                <button class="view-btn active" data-view="v_market_basket">Market Baskets (AI Input)</button>
+                <button class="view-btn" data-view="v_customer_purchase_summary">Customer Purchase Summary</button>
+                <button class="view-btn" data-view="v_product_performance">Product Performance & Reviews</button>
+                <button class="view-btn" data-view="v_frequent_product_pairs">Frequent 2-Item SQL Pairs</button>
+            </div>
+
+            <div class="glass-panel">
+                <div class="table-responsive" style="max-height: 380px;">
+                    <table class="data-table" id="dbmsViewTable">
+                        <thead id="dbmsViewHead"></thead>
+                        <tbody id="dbmsViewBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Interactive SQL Runner -->
+            <div class="glass-panel sql-console-panel">
+                <div class="panel-header">
+                    <h3>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="4 17 10 11 4 5"/>
+                            <line x1="12" y1="19" x2="20" y2="19"/>
+                        </svg>
+                        Interactive SQL Query Console (SELECT & EXPLAIN)
+                    </h3>
+                    <span class="badge-subtle">Live SQLite Execution</span>
+                </div>
+
+                <div class="sql-input-row">
+                    <textarea id="sqlQueryInput" class="sql-textarea" rows="3" placeholder="Enter SQL query, e.g. SELECT p.product_name, cat.category_name, p.price FROM products p JOIN categories cat ON p.category_id = cat.category_id ORDER BY p.price DESC LIMIT 5;">SELECT p.product_name, cat.category_name, p.price, p.stock_quantity FROM products p JOIN categories cat ON p.category_id = cat.category_id ORDER BY p.price DESC LIMIT 6;</textarea>
+                </div>
+                <div class="sql-action-row">
+                    <div class="sql-presets">
+                        <span>Presets:</span>
+                        <button class="sql-preset-btn" data-query="SELECT * FROM v_market_basket LIMIT 5;">Market Baskets</button>
+                        <button class="sql-preset-btn" data-query="SELECT p.product_name, COUNT(oi.order_id) as orders_count FROM products p JOIN order_items oi ON p.product_id = oi.product_id GROUP BY p.product_id ORDER BY orders_count DESC LIMIT 5;">Top Selling Products</button>
+                        <button class="sql-preset-btn" data-query="EXPLAIN QUERY PLAN SELECT * FROM order_items WHERE product_id = 'P101';">Explain Index Plan</button>
+                    </div>
+                    <button id="runSqlBtn" class="btn-primary">Execute SQL</button>
+                </div>
+
+                <div id="sqlResultWrap" class="table-responsive" style="margin-top: 15px; display: none;">
+                    <table class="data-table" id="sqlResultTable">
+                        <thead id="sqlResultHead"></thead>
+                        <tbody id="sqlResultBody"></tbody>
+                    </table>
+                </div>
+                <div id="sqlErrorMsg" class="sql-error" style="display: none;"></div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Shopping Cart Drawer / Modal -->
+    <div id="cartDrawerOverlay" class="drawer-overlay">
+        <div class="drawer">
+            <div class="drawer-header">
+                <h3>Shopping Cart (<span id="drawerCustomerName">Alex Rivera</span>)</h3>
+                <button id="closeCartBtn" class="close-btn" aria-label="Close cart">&times;</button>
+            </div>
+
+            <div id="drawerCartItems" class="drawer-body">
+                <!-- Cart items or empty state -->
+            </div>
+
+            <div class="drawer-footer">
+                <div class="drawer-summary">
+                    <span>Order Subtotal:</span>
+                    <strong id="drawerSubtotal" class="subtotal-val">$0.00</strong>
+                </div>
+
+                <!-- Transaction Execution Buttons -->
+                <div class="checkout-actions">
+                    <button id="checkoutSuccessBtn" class="btn-success btn-full">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                        Complete Checkout (ACID Commit)
+                    </button>
+                    <button id="checkoutFailBtn" class="btn-danger-outline btn-full">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <line x1="15" y1="9" x2="9" y2="15"/>
+                            <line x1="9" y1="9" x2="15" y2="15"/>
+                        </svg>
+                        Simulate Gateway Error (Test ACID Rollback)
+                    </button>
+                </div>
+
+                <!-- Live Transaction Log -->
+                <div id="transactionAuditLog" class="transaction-log-box" style="display: none;">
+                    <div class="log-title">ACID Transaction Execution Log:</div>
+                    <pre id="transactionLogText"></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>
