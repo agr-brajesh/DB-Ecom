@@ -12,17 +12,17 @@ load_dotenv()
 
 SQL_FILE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "supabase_migration.sql")
 SUPABASE_URL = os.getenv("NEXT_PUBLIC_SUPABASE_URL", "")
-PROJECT_REF = "kxipulbczlqfenntmqzv"
+PROJECT_REF = os.getenv("SUPABASE_PROJECT_REF") or (SUPABASE_URL.split("//")[1].split(".")[0] if "//" in SUPABASE_URL else "kxipulbczlqfenntmqzv")
 DB_PASSWORD = os.getenv("SUPABASE_DB_PASSWORD")
 
 if not DB_PASSWORD:
     print("[!] Error: SUPABASE_DB_PASSWORD not found in .env")
     exit(1)
 
-# Supabase ap-southeast-2 host
-HOST = "aws-0-ap-southeast-2.pooler.supabase.com"
+# Supabase pooler host
+HOST = os.getenv("SUPABASE_DB_HOST", "aws-0-ap-southeast-2.pooler.supabase.com")
 USER = f"postgres.{PROJECT_REF}"
-PORT = 5432  # Session pooler for clean DDL execution
+PORT = int(os.getenv("SUPABASE_DB_PORT", 5432))  # Session pooler for clean DDL execution
 
 print("=" * 65)
 print(" EXECUTING REMOTE SUPABASE MIGRATION")

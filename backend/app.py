@@ -103,9 +103,203 @@ def get_products():
     return jsonify({"status": "success", "categories": categories, "products": products})
 
 
+@app.route("/api/product/<product_id>", methods=["GET"])
+def get_product_details(product_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT p.product_id, p.product_name, p.brand, p.price, p.stock_quantity, 
+               p.description, cat.category_id, cat.category_name,
+               ROUND(AVG(r.rating), 1) as avg_rating, COUNT(r.review_id) as review_count
+        FROM products p
+        JOIN categories cat ON p.category_id = cat.category_id
+        LEFT JOIN reviews r ON p.product_id = r.product_id
+        WHERE p.product_id = ?
+        GROUP BY p.product_id;
+    """, (product_id,))
+    prod = cursor.fetchone()
+    if not prod:
+        conn.close()
+        return jsonify({"status": "error", "message": "Product not found"}), 404
+
+    # Fetch product reviews
+    cursor.execute("""
+        SELECT r.rating, r.comment, r.review_date, c.name as customer_name
+        FROM reviews r
+        JOIN customers c ON r.customer_id = c.customer_id
+        WHERE r.product_id = ?
+        ORDER BY r.review_date DESC LIMIT 10;
+    """, (product_id,))
+    reviews = [{
+        "rating": r[0],
+        "comment": r[1],
+        "review_date": r[2],
+        "customer_name": r[3]
+    } for r in cursor.fetchall()]
+    conn.close()
+
+    # Frequently bought together (Apriori rules where product_id is in antecedent)
+    frequently_bought = []
+    seen_fbt = set()
+    for rule in recommender.rules:
+        if product_id in rule["antecedent"]:
+            for con in rule["consequent"]:
+                if con != product_id and con not in seen_fbt:
+                    details = recommender._get_product_details(con)
+                    if details:
+                        details["confidence"] = rule["confidence"]
+                        details["lift"] = rule["lift"]
+                        frequently_bought.append(details)
+                        seen_fbt.add(con)
+                if len(frequently_bought) >= 4:
+                    break
+        if len(frequently_bought) >= 4:
+            break
+
+    # Similar products from Content-Based engine
+    similar_products = recommender.content_engine.recommend_similar_products(product_id, top_n=4)
+
+    return jsonify({
+        "status": "success",
+        "product": {
+            "product_id": prod[0],
+            "product_name": prod[1],
+            "brand": prod[2],
+            "price": prod[3],
+            "stock_quantity": prod[4],
+            "description": prod[5],
+            "category_id": prod[6],
+            "category_name": prod[7],
+            "avg_rating": prod[8] or 4.5,
+            "review_count": prod[9] or 0,
+            "reviews": reviews,
+            "frequently_bought": frequently_bought,
+            "similar_products": similar_products
+        }
+    })
+
+
+@app.route("/api/orders/<customer_id>", methods=["GET"])
+def get_customer_orders(customer_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT o.order_id, o.order_date, o.total_amount, o.order_status,
+               COALESCE(p.payment_method, 'CREDIT_CARD') as payment_method,
+               COALESCE(p.payment_status, 'SUCCESS') as payment_status,
+               oi.product_id, pr.product_name, oi.quantity, oi.unit_price, cat.category_name
+        FROM orders o
+        LEFT JOIN payments p ON o.order_id = p.order_id
+        JOIN order_items oi ON o.order_id = oi.order_id
+        JOIN products pr ON oi.product_id = pr.product_id
+        JOIN categories cat ON pr.category_id = cat.category_id
+        WHERE o.customer_id = ?
+        ORDER BY o.order_date DESC, o.order_id DESC;
+    """, (customer_id,))
+    rows = cursor.fetchall()
+    conn.close()
+
+    orders_dict = {}
+    for r in rows:
+        oid = r[0]
+        if oid not in orders_dict:
+            orders_dict[oid] = {
+                "order_id": oid,
+                "order_date": r[1],
+                "total_amount": r[2],
+                "order_status": r[3],
+                "payment_method": r[4],
+                "payment_status": r[5],
+                "items": []
+            }
+        orders_dict[oid]["items"].append({
+            "product_id": r[6],
+            "product_name": r[7],
+            "quantity": r[8],
+            "unit_price": r[9],
+            "category_name": r[10],
+            "subtotal": round(r[8] * r[9], 2)
+        })
+
+    return jsonify({"status": "success", "orders": list(orders_dict.values())})
+
+
+@app.route("/api/admin/overview", methods=["GET"])
+def get_admin_overview():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # 1. Total revenue & orders count
+    cursor.execute("SELECT COUNT(order_id), COALESCE(SUM(total_amount), 0.0) FROM orders WHERE order_status = 'COMPLETED';")
+    total_orders, gross_revenue = cursor.fetchone()
+
+    # 2. Total customers
+    cursor.execute("SELECT COUNT(customer_id) FROM customers;")
+    total_customers = cursor.fetchone()[0]
+
+    # 3. Low stock alert products (stock < 120)
+    cursor.execute("SELECT product_id, product_name, stock_quantity, price FROM products WHERE stock_quantity < 120 ORDER BY stock_quantity ASC LIMIT 10;")
+    low_stock = [{"product_id": r[0], "product_name": r[1], "stock_quantity": r[2], "price": r[3]} for r in cursor.fetchall()]
+
+    # 4. Top 5 selling products from v_product_performance
+    cursor.execute("SELECT product_id, product_name, category_name, units_sold, total_revenue, avg_rating FROM v_product_performance ORDER BY units_sold DESC LIMIT 5;")
+    top_products = [{"product_id": r[0], "product_name": r[1], "category_name": r[2], "units_sold": r[3], "total_revenue": r[4], "avg_rating": r[5]} for r in cursor.fetchall()]
+
+    # 5. Domain sales breakdown
+    cursor.execute("""
+        SELECT cat.category_name, COUNT(oi.order_item_id) as items_sold, ROUND(SUM(oi.quantity * oi.unit_price), 2) as revenue
+        FROM categories cat
+        JOIN products p ON cat.category_id = p.category_id
+        JOIN order_items oi ON p.product_id = oi.product_id
+        GROUP BY cat.category_id, cat.category_name
+        ORDER BY revenue DESC;
+    """)
+    category_sales = [{"category_name": r[0], "items_sold": r[1], "revenue": r[2]} for r in cursor.fetchall()]
+
+    # 6. Recent 10 orders
+    cursor.execute("""
+        SELECT o.order_id, c.name, o.order_date, o.total_amount, o.order_status, COALESCE(p.payment_method, 'CREDIT_CARD')
+        FROM orders o
+        JOIN customers c ON o.customer_id = c.customer_id
+        LEFT JOIN payments p ON o.order_id = p.order_id
+        ORDER BY o.order_date DESC LIMIT 10;
+    """)
+    recent_orders = [{
+        "order_id": r[0],
+        "customer_name": r[1],
+        "order_date": r[2],
+        "total_amount": r[3],
+        "order_status": r[4],
+        "payment_method": r[5]
+    } for r in cursor.fetchall()]
+
+    conn.close()
+
+    return jsonify({
+        "status": "success",
+        "overview": {
+            "gross_revenue": round(gross_revenue, 2),
+            "total_orders": total_orders,
+            "total_customers": total_customers,
+            "total_products": len(recommender.miner.product_name_map),
+            "total_rules": len(recommender.rules),
+            "low_stock_products": low_stock,
+            "top_products": top_products,
+            "category_sales": category_sales,
+            "recent_orders": recent_orders
+        }
+    })
+
+
 @app.route("/api/recommendations/<customer_id>", methods=["GET"])
 def get_recommendations(customer_id):
-    top_n = int(request.args.get("top_n", 4))
+    try:
+        top_n = int(request.args.get("top_n", 4))
+        if top_n <= 0:
+            top_n = 4
+    except (ValueError, TypeError):
+        top_n = 4
+
     res = recommender.recommend(customer_id, top_n=top_n)
     if "error" in res:
         return jsonify({"status": "error", "message": res["error"]}), 404
@@ -148,10 +342,16 @@ def add_to_cart():
     data = request.json or {}
     customer_id = data.get("customer_id")
     product_id = data.get("product_id")
-    quantity = int(data.get("quantity", 1))
 
     if not customer_id or not product_id:
         return jsonify({"status": "error", "message": "Missing customer_id or product_id"}), 400
+
+    try:
+        quantity = int(data.get("quantity", 1))
+        if quantity <= 0:
+            return jsonify({"status": "error", "message": "Quantity must be greater than 0"}), 400
+    except (ValueError, TypeError):
+        return jsonify({"status": "error", "message": "Invalid quantity provided"}), 400
 
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -186,6 +386,9 @@ def remove_from_cart():
     customer_id = data.get("customer_id")
     product_id = data.get("product_id")
 
+    if not customer_id or not product_id:
+        return jsonify({"status": "error", "message": "Missing customer_id or product_id"}), 400
+
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("DELETE FROM shopping_cart WHERE customer_id = ? AND product_id = ?;", (customer_id, product_id))
@@ -213,9 +416,12 @@ def execute_checkout():
 
 @app.route("/api/analytics/rules", methods=["GET"])
 def get_association_rules():
-    min_conf = float(request.args.get("min_confidence", 0.5))
-    min_lift = float(request.args.get("min_lift", 1.5))
-    limit = int(request.args.get("limit", 50))
+    try:
+        min_conf = float(request.args.get("min_confidence", 0.5))
+        min_lift = float(request.args.get("min_lift", 1.5))
+        limit = int(request.args.get("limit", 50))
+    except (ValueError, TypeError):
+        min_conf, min_lift, limit = 0.5, 1.5, 50
 
     filtered_rules = [
         r for r in recommender.rules 
@@ -259,18 +465,32 @@ def execute_raw_sql():
     if not query:
         return jsonify({"status": "error", "message": "Query string is empty"}), 400
 
-    # Safety check: allow SELECT / EXPLAIN only
-    first_word = query.split()[0].upper()
+    # Clean trailing semicolon if present
+    stripped_query = query.rstrip(";").strip()
+    if ";" in stripped_query:
+        return jsonify({"status": "error", "message": "Multiple statements are not permitted in the live runner."}), 400
+
+    # Safety check: allow read-only query types only
+    first_word = stripped_query.split()[0].upper()
     if first_word not in ("SELECT", "EXPLAIN", "PRAGMA", "WITH"):
         return jsonify({"status": "error", "message": "Only read-only queries (SELECT, EXPLAIN, PRAGMA) are allowed in the live runner."}), 400
 
+    # Disallow destructive/modification keywords anywhere in query
+    upper_query = stripped_query.upper()
+    disallowed_keywords = ["INSERT ", "UPDATE ", "DELETE ", "DROP ", "ALTER ", "CREATE ", "ATTACH ", "DETACH ", "REINDEX ", "VACUUM "]
+    for kw in disallowed_keywords:
+        if kw in upper_query:
+            return jsonify({"status": "error", "message": f"Write/DDL command '{kw.strip()}' is strictly prohibited."}), 400
+
+    conn = None
     try:
-        conn = get_db_connection()
+        # Enforce read-only connection at SQLite engine level
+        db_uri = f"file:{os.path.abspath(DB_PATH)}?mode=ro"
+        conn = sqlite3.connect(db_uri, uri=True)
         cursor = conn.cursor()
-        cursor.execute(query)
+        cursor.execute(stripped_query)
         columns = [col[0] for col in cursor.description] if cursor.description else []
         rows = cursor.fetchall()
-        conn.close()
 
         formatted_rows = [dict(zip(columns, r)) for r in rows]
         return jsonify({
@@ -281,6 +501,9 @@ def execute_raw_sql():
         })
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 400
+    finally:
+        if conn:
+            conn.close()
 
 
 if __name__ == "__main__":

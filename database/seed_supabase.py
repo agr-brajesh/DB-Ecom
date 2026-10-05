@@ -13,9 +13,11 @@ from dotenv import load_dotenv
 load_dotenv()
 
 SQLITE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ecommerce.db")
-PROJECT_REF = "kxipulbczlqfenntmqzv"
+SUPABASE_URL = os.getenv("NEXT_PUBLIC_SUPABASE_URL", "")
+PROJECT_REF = os.getenv("SUPABASE_PROJECT_REF") or (SUPABASE_URL.split("//")[1].split(".")[0] if "//" in SUPABASE_URL else "kxipulbczlqfenntmqzv")
 DB_PASSWORD = os.getenv("SUPABASE_DB_PASSWORD")
-HOST = "aws-0-ap-southeast-2.pooler.supabase.com"
+HOST = os.getenv("SUPABASE_DB_HOST", "aws-0-ap-southeast-2.pooler.supabase.com")
+PORT = int(os.getenv("SUPABASE_DB_PORT", 5432))
 USER = f"postgres.{PROJECT_REF}"
 
 print("[*] Connecting to local SQLite and remote Supabase PostgreSQL...")
