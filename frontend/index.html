@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NexusAI | E-Commerce DBMS & Product Recommendation Engine</title>
-    <meta name="description" content="AI-Based E-Commerce Database system with Apriori Market Basket Analysis, 3NF Relational Schema, and ACID Transactions.">
+    <title>NexusAI | Modern E-Commerce Store & Intelligence Platform</title>
+    <meta name="description" content="NexusAI - Next-Generation E-Commerce Store powered by Relational DBMS (3NF), ACID Transactions, and Apriori AI Association Mining.">
     <!-- Google Fonts: Outfit & Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,348 +12,1090 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- Top Navigation Bar -->
-    <header class="navbar">
-        <div class="nav-left">
-            <div class="logo">
-                <div class="logo-icon">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+
+    <!-- ==========================================================
+         TOP UTILITY & ANNOUNCEMENT BAR
+         ========================================================== -->
+    <div class="top-announcement-bar">
+        <div class="announcement-content">
+            <div class="announcement-left">
+                <span class="badge-pill-light">FLASH SALE</span>
+                <span>Free Express Shipping on Orders Over $50 &bull; 30-Day Money-Back Guarantee</span>
+            </div>
+            <div class="announcement-right">
+                <!-- Academic / Admin Mode Toggle -->
+                <button id="togglePortalModeBtn" class="admin-mode-toggle" title="Switch between Customer Storefront and Admin / DBMS Lab">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <ellipse cx="12" cy="5" rx="9" ry="3"/>
+                        <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+                        <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
                     </svg>
-                </div>
-                <div class="logo-text">
-                    <span class="brand-title">NexusAI</span>
-                    <span class="brand-subtitle">DBMS + Apriori Engine</span>
-                </div>
-            </div>
+                    <span id="portalModeBtnText">Admin &amp; Database Lab</span>
+                </button>
 
-            <!-- Customer Switcher -->
-            <div class="customer-picker-wrapper">
-                <label for="customerSelect"><span class="pulse-dot"></span> Active Customer:</label>
-                <select id="customerSelect" class="customer-select">
-                    <!-- Populated dynamically via JS -->
-                </select>
-            </div>
-        </div>
-
-        <!-- Navigation Tabs -->
-        <nav class="nav-tabs">
-            <button class="tab-btn active" data-tab="recommendations">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/>
-                </svg>
-                AI Recommendations
-            </button>
-            <button class="tab-btn" data-tab="catalog">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="3" y="3" width="7" height="7"/>
-                    <rect x="14" y="3" width="7" height="7"/>
-                    <rect x="14" y="14" width="7" height="7"/>
-                    <rect x="3" y="14" width="7" height="7"/>
-                </svg>
-                Catalog (8 Domains)
-            </button>
-            <button class="tab-btn" data-tab="rules">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-                </svg>
-                Apriori Rules
-            </button>
-            <button class="tab-btn" data-tab="dbms">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <ellipse cx="12" cy="5" rx="9" ry="3"/>
-                    <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
-                    <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
-                </svg>
-                DBMS Views & SQL
-            </button>
-        </nav>
-
-        <!-- Right Side: Cart Trigger -->
-        <div class="nav-right">
-            <button id="cartToggleBtn" class="cart-btn" aria-label="View Shopping Cart">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="9" cy="21" r="1"/>
-                    <circle cx="20" cy="21" r="1"/>
-                    <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
-                </svg>
-                <span class="cart-label">Cart</span>
-                <span id="cartCountBadge" class="cart-badge">0</span>
-            </button>
-        </div>
-    </header>
-
-    <!-- Main Container -->
-    <main class="main-container">
-
-        <!-- TAB 1: AI RECOMMENDATIONS VIEW -->
-        <section id="tab-recommendations" class="tab-content active">
-            <!-- Hero Banner with Customer Status -->
-            <div class="customer-hero-card">
-                <div class="customer-meta">
-                    <div class="avatar-circle" id="heroAvatar">AR</div>
-                    <div>
-                        <h2 id="heroCustomerName">Alex Rivera</h2>
-                        <p id="heroCustomerMeta" class="sub-meta">Customer ID: <strong id="heroCustomerId">C101</strong> • Seattle • alex.rivera@example.com</p>
-                    </div>
-                </div>
-
-                <div class="customer-context-badges">
-                    <div class="context-pill">
-                        <span class="pill-label">Past Orders</span>
-                        <span id="heroOrderCount" class="pill-value">1</span>
-                    </div>
-                    <div class="context-pill">
-                        <span class="pill-label">Items in Cart</span>
-                        <span id="heroCartCount" class="pill-value">1</span>
-                    </div>
-                    <div class="context-pill highlight">
-                        <span class="pill-label">AI Status</span>
-                        <span class="pill-value"><span class="sparkle">⚡</span> Active Rules</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Customer Purchase History & Current Cart Stream -->
-            <div class="grid-two-cols">
-                <div class="glass-panel">
-                    <div class="panel-header">
-                        <h3>
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <polyline points="20 6 9 17 4 12"/>
-                            </svg>
-                            Customer Purchase History (From DBMS)
-                        </h3>
-                        <span class="badge-subtle">Completed Orders</span>
-                    </div>
-                    <div id="historyList" class="compact-item-list">
-                        <!-- Populated by JS -->
-                    </div>
-                </div>
-
-                <div class="glass-panel">
-                    <div class="panel-header">
-                        <h3>
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="9" cy="21" r="1"/>
-                                <circle cx="20" cy="21" r="1"/>
-                                <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
-                            </svg>
-                            Active Shopping Cart (Real-Time Antecedents)
-                        </h3>
-                        <span class="badge-subtle">In Cart</span>
-                    </div>
-                    <div id="activeCartList" class="compact-item-list">
-                        <!-- Populated by JS -->
-                    </div>
-                </div>
-            </div>
-
-            <!-- Recommended Products Section -->
-            <div class="recommendations-section">
-                <div class="section-title-wrap">
-                    <div>
-                        <h2 class="section-title">
-                            <span class="gradient-text">Top Recommended Products</span>
-                        </h2>
-                        <p class="section-desc">Mined using Apriori Association Rules ($X \to Y$) & Cosine Similarity on active customer history</p>
-                    </div>
-                    <button id="refreshRecsBtn" class="btn-outline">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M23 4v6h-6M1 20v-6h6"/>
-                            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
-                        </svg>
-                        Recalculate
-                    </button>
-                </div>
-
-                <!-- Live Recommendation Cards Grid -->
-                <div id="recommendationsGrid" class="cards-grid">
-                    <!-- Populated dynamically via JS -->
-                </div>
-            </div>
-        </section>
-
-        <!-- TAB 2: PRODUCT CATALOG (8 DOMAINS) -->
-        <section id="tab-catalog" class="tab-content">
-            <div class="section-title-wrap">
-                <div>
-                    <h2 class="section-title">Full Product Catalog</h2>
-                    <p class="section-desc">45 items across 8 distinct consumer and professional electronics domains</p>
-                </div>
-                <div class="search-wrap">
-                    <input type="text" id="catalogSearchInput" placeholder="Search catalog by name, brand, or tag..." class="input-field">
-                </div>
-            </div>
-
-            <!-- Category Filter Pills -->
-            <div id="categoryFilterBar" class="filter-pills-bar">
-                <button class="pill active" data-cat="">All Categories (45)</button>
-                <!-- Dynamically populated -->
-            </div>
-
-            <!-- Catalog Products Grid -->
-            <div id="catalogGrid" class="cards-grid">
-                <!-- Populated dynamically via JS -->
-            </div>
-        </section>
-
-        <!-- TAB 3: APRIORI RULES EXPLORER -->
-        <section id="tab-rules" class="tab-content">
-            <div class="section-title-wrap">
-                <div>
-                    <h2 class="section-title">Apriori Association Rule Miner</h2>
-                    <p class="section-desc">Inspect statistical market basket associations discovered across all completed transactions</p>
-                </div>
-            </div>
-
-            <div class="glass-panel rule-controls-panel">
-                <div class="control-row">
-                    <div class="slider-group">
-                        <label for="minConfSlider">Minimum Confidence: <span id="confValueDisplay" class="bold-val">60%</span></label>
-                        <input type="range" id="minConfSlider" min="0.4" max="1.0" step="0.05" value="0.6">
-                    </div>
-                    <div class="slider-group">
-                        <label for="minLiftSlider">Minimum Lift: <span id="liftValueDisplay" class="bold-val">1.5x</span></label>
-                        <input type="range" id="minLiftSlider" min="1.0" max="15.0" step="0.5" value="1.5">
-                    </div>
-                    <button id="applyRuleFilterBtn" class="btn-primary">Apply Filters</button>
-                </div>
-            </div>
-
-            <div class="glass-panel">
-                <div class="table-responsive">
-                    <table class="data-table" id="rulesTable">
-                        <thead>
-                            <tr>
-                                <th>#</th>
-                                <th>Antecedent Item(s) ($X$)</th>
-                                <th></th>
-                                <th>Consequent Recommended ($Y$)</th>
-                                <th>Support</th>
-                                <th>Confidence</th>
-                                <th>Lift</th>
-                            </tr>
-                        </thead>
-                        <tbody id="rulesTableBody">
-                            <!-- Populated dynamically -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </section>
-
-        <!-- TAB 4: DBMS VIEWS & LIVE SQL RUNNER -->
-        <section id="tab-dbms" class="tab-content">
-            <div class="section-title-wrap">
-                <div>
-                    <h2 class="section-title">DBMS Relational Views & Live Query Runner</h2>
-                    <p class="section-desc">Verify 3NF schema, analytical views (`v_market_basket`, `v_customer_purchase_summary`), and indexes</p>
-                </div>
-            </div>
-
-            <!-- View Selector Tabs -->
-            <div class="view-selector-bar">
-                <button class="view-btn active" data-view="v_market_basket">Market Baskets (AI Input)</button>
-                <button class="view-btn" data-view="v_customer_purchase_summary">Customer Purchase Summary</button>
-                <button class="view-btn" data-view="v_product_performance">Product Performance & Reviews</button>
-                <button class="view-btn" data-view="v_frequent_product_pairs">Frequent 2-Item SQL Pairs</button>
-            </div>
-
-            <div class="glass-panel">
-                <div class="table-responsive" style="max-height: 380px;">
-                    <table class="data-table" id="dbmsViewTable">
-                        <thead id="dbmsViewHead"></thead>
-                        <tbody id="dbmsViewBody"></tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- Interactive SQL Runner -->
-            <div class="glass-panel sql-console-panel">
-                <div class="panel-header">
-                    <h3>
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="4 17 10 11 4 5"/>
-                            <line x1="12" y1="19" x2="20" y2="19"/>
-                        </svg>
-                        Interactive SQL Query Console (SELECT & EXPLAIN)
-                    </h3>
-                    <span class="badge-subtle">Live SQLite Execution</span>
-                </div>
-
-                <div class="sql-input-row">
-                    <textarea id="sqlQueryInput" class="sql-textarea" rows="3" placeholder="Enter SQL query, e.g. SELECT p.product_name, cat.category_name, p.price FROM products p JOIN categories cat ON p.category_id = cat.category_id ORDER BY p.price DESC LIMIT 5;">SELECT p.product_name, cat.category_name, p.price, p.stock_quantity FROM products p JOIN categories cat ON p.category_id = cat.category_id ORDER BY p.price DESC LIMIT 6;</textarea>
-                </div>
-                <div class="sql-action-row">
-                    <div class="sql-presets">
-                        <span>Presets:</span>
-                        <button class="sql-preset-btn" data-query="SELECT * FROM v_market_basket LIMIT 5;">Market Baskets</button>
-                        <button class="sql-preset-btn" data-query="SELECT p.product_name, COUNT(oi.order_id) as orders_count FROM products p JOIN order_items oi ON p.product_id = oi.product_id GROUP BY p.product_id ORDER BY orders_count DESC LIMIT 5;">Top Selling Products</button>
-                        <button class="sql-preset-btn" data-query="EXPLAIN QUERY PLAN SELECT * FROM order_items WHERE product_id = 'P101';">Explain Index Plan</button>
-                    </div>
-                    <button id="runSqlBtn" class="btn-primary">Execute SQL</button>
-                </div>
-
-                <div id="sqlResultWrap" class="table-responsive" style="margin-top: 15px; display: none;">
-                    <table class="data-table" id="sqlResultTable">
-                        <thead id="sqlResultHead"></thead>
-                        <tbody id="sqlResultBody"></tbody>
-                    </table>
-                </div>
-                <div id="sqlErrorMsg" class="sql-error" style="display: none;"></div>
-            </div>
-        </section>
-    </main>
-
-    <!-- Shopping Cart Drawer / Modal -->
-    <div id="cartDrawerOverlay" class="drawer-overlay">
-        <div class="drawer">
-            <div class="drawer-header">
-                <h3>Shopping Cart (<span id="drawerCustomerName">Alex Rivera</span>)</h3>
-                <button id="closeCartBtn" class="close-btn" aria-label="Close cart">&times;</button>
-            </div>
-
-            <div id="drawerCartItems" class="drawer-body">
-                <!-- Cart items or empty state -->
-            </div>
-
-            <div class="drawer-footer">
-                <div class="drawer-summary">
-                    <span>Order Subtotal:</span>
-                    <strong id="drawerSubtotal" class="subtotal-val">$0.00</strong>
-                </div>
-
-                <!-- Transaction Execution Buttons -->
-                <div class="checkout-actions">
-                    <button id="checkoutSuccessBtn" class="btn-success btn-full">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="20 6 9 17 4 12"/>
-                        </svg>
-                        Complete Checkout (ACID Commit)
-                    </button>
-                    <button id="checkoutFailBtn" class="btn-danger-outline btn-full">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="10"/>
-                            <line x1="15" y1="9" x2="9" y2="15"/>
-                            <line x1="9" y1="9" x2="15" y2="15"/>
-                        </svg>
-                        Simulate Gateway Error (Test ACID Rollback)
-                    </button>
-                </div>
-
-                <!-- Live Transaction Log -->
-                <div id="transactionAuditLog" class="transaction-log-box" style="display: none;">
-                    <div class="log-title">ACID Transaction Execution Log:</div>
-                    <pre id="transactionLogText"></pre>
+                <!-- Discreet Demo Persona Switcher (Required for demo, non-intrusive) -->
+                <div class="demo-persona-badge" id="demoPersonaWrapper">
+                    <span class="persona-dot"></span>
+                    <span class="persona-label">Persona:</span>
+                    <select id="customerSelect" class="persona-select" title="Switch Customer Profile for AI personalization testing">
+                        <!-- Populated dynamically via JS -->
+                    </select>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Notification Toast Container -->
+    <!-- ==========================================================
+         CUSTOMER PORTAL: PRIMARY E-COMMERCE HEADER
+         ========================================================== -->
+    <header class="navbar storefront-nav" id="storefrontHeader">
+        <div class="nav-container">
+            <!-- Brand Logo -->
+            <div class="nav-brand" onclick="navigateTo('home')">
+                <div class="logo-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+                        <polyline points="2 17 12 22 22 17"/>
+                        <polyline points="2 12 12 17 22 12"/>
+                    </svg>
+                </div>
+                <div class="logo-text">
+                    <span class="brand-title">Nexus<span class="brand-accent">AI</span></span>
+                    <span class="brand-subtitle">Smart Tech &amp; Gear</span>
+                </div>
+            </div>
+
+            <!-- Global Live Search Bar -->
+            <div class="nav-search-bar">
+                <div class="search-category-select">
+                    <select id="headerCategorySelect">
+                        <option value="">All Categories</option>
+                        <!-- Populated dynamically -->
+                    </select>
+                </div>
+                <div class="search-input-wrap">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"/>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                    </svg>
+                    <input type="text" id="globalSearchInput" placeholder="Search 45+ products, brands, cameras, keyboards..." autocomplete="off">
+                    <button id="clearSearchBtn" class="clear-search-btn" style="display:none;" title="Clear search">&times;</button>
+                </div>
+                <button id="headerSearchBtn" class="btn-search-action">Search</button>
+            </div>
+
+            <!-- Navigation Links -->
+            <nav class="nav-links">
+                <button class="nav-link active" data-nav="home" onclick="navigateTo('home')">Home</button>
+                <button class="nav-link" data-nav="shop" onclick="navigateTo('shop')">Shop</button>
+                <button class="nav-link" data-nav="categories" onclick="navigateTo('categories')">Categories</button>
+            </nav>
+
+            <!-- Customer Actions (Wishlist, Cart, Account) -->
+            <div class="nav-actions">
+                <!-- Wishlist Button -->
+                <button class="action-btn" id="wishlistNavBtn" onclick="navigateTo('wishlist')" title="View Saved Wishlist">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                    </svg>
+                    <span id="wishlistCountBadge" class="nav-badge">0</span>
+                    <span class="action-label">Wishlist</span>
+                </button>
+
+                <!-- Cart Button -->
+                <button class="action-btn cart-action" id="cartToggleBtn" title="View Shopping Cart">
+                    <div class="cart-icon-wrap">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="9" cy="21" r="1"/>
+                            <circle cx="20" cy="21" r="1"/>
+                            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+                        </svg>
+                        <span id="cartCountBadge" class="nav-badge">0</span>
+                    </div>
+                    <div class="cart-info-text">
+                        <span class="action-sub">Cart</span>
+                        <span id="navCartTotal" class="action-total">$0.00</span>
+                    </div>
+                </button>
+
+                <!-- Customer Account Dropdown -->
+                <div class="account-menu-wrap" id="accountMenuWrap">
+                    <button class="account-btn" id="accountMenuBtn" aria-label="Customer Account">
+                        <div class="nav-avatar" id="navCustomerAvatar">AR</div>
+                        <div class="nav-user-text">
+                            <span class="nav-hello">Hello,</span>
+                            <span class="nav-username" id="navCustomerName">Alex Rivera</span>
+                        </div>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"/>
+                        </svg>
+                    </button>
+                    <!-- Dropdown Content -->
+                    <div class="account-dropdown" id="accountDropdown">
+                        <div class="dropdown-header">
+                            <strong id="dropdownUserName">Alex Rivera</strong>
+                            <span id="dropdownUserEmail" class="dropdown-email">alex.rivera@example.com</span>
+                            <span id="dropdownUserDomain" class="dropdown-domain-tag">Computing &amp; Workstations</span>
+                        </div>
+                        <div class="dropdown-divider"></div>
+                        <button class="dropdown-item" onclick="navigateTo('profile')">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                            My Profile &amp; Stats
+                        </button>
+                        <button class="dropdown-item" onclick="navigateTo('orders')">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                            Order History
+                        </button>
+                        <button class="dropdown-item" onclick="navigateTo('wishlist')">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                            My Wishlist
+                        </button>
+                        <div class="dropdown-divider"></div>
+                        <button class="dropdown-item admin-link" onclick="openAdminPortal('dashboard')">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+                            Admin &amp; Database Lab
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- ==========================================================
+         CUSTOMER STOREFRONT PAGES
+         ========================================================== -->
+    <main class="storefront-main" id="storefrontContainer">
+
+        <!-- 1. HOME VIEW -->
+        <section id="view-home" class="page-view active">
+            <!-- Hero Banner -->
+            <div class="ecommerce-hero">
+                <div class="hero-content">
+                    <span class="hero-badge">Curated by Relational AI &bull; 8 Consumer Domains</span>
+                    <h1 class="hero-headline">High-Performance Tech &amp; Studio Gear, <span class="gradient-text">Engineered for Creators.</span></h1>
+                    <p class="hero-subtext">Discover personalized hardware bundles, ergonomic setups, and studio accessories backed by mathematical market basket co-occurrence models.</p>
+                    <div class="hero-actions">
+                        <button class="btn-primary" onclick="navigateTo('shop')">
+                            Explore Catalog (45 Products)
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                        </button>
+                        <button class="btn-secondary" onclick="scrollToSection('homeRecsSection')">
+                            View AI Recommendations
+                        </button>
+                    </div>
+                </div>
+                <!-- Hero Highlight Card -->
+                <div class="hero-graphic">
+                    <div class="hero-promo-card">
+                        <div class="promo-tag">TOP RECOMMENDED BUNDLE</div>
+                        <h3 id="heroBundleTitle">Computing &amp; Workstation Suite</h3>
+                        <p id="heroBundleDesc">UltraBook Pro 15-inch Laptop + Multi-Port USB-C Hub + Waterproof Padded Sleeve</p>
+                        <div class="promo-price-box">
+                            <span class="promo-price-now">$1379.97</span>
+                            <span class="promo-confidence-pill">95.2% Confidence</span>
+                        </div>
+                        <button class="btn-hero-cta" onclick="navigateTo('shop')">Shop Current Domain</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Value Proposition Bar -->
+            <div class="value-props-bar">
+                <div class="prop-item">
+                    <div class="prop-icon">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+                    </div>
+                    <div>
+                        <h4>Free Express Delivery</h4>
+                        <p>Orders over $50 dispatch same day</p>
+                    </div>
+                </div>
+                <div class="prop-item">
+                    <div class="prop-icon">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    </div>
+                    <div>
+                        <h4>ACID Guaranteed Stock</h4>
+                        <p>Engine-level inventory consistency</p>
+                    </div>
+                </div>
+                <div class="prop-item">
+                    <div class="prop-icon">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                    </div>
+                    <div>
+                        <h4>30-Day Hassle-Free Returns</h4>
+                        <p>100% money-back satisfaction</p>
+                    </div>
+                </div>
+                <div class="prop-item">
+                    <div class="prop-icon">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                    </div>
+                    <div>
+                        <h4>Apriori Smart Mining</h4>
+                        <p>Data-driven bundle suggestions</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Featured Categories (8 Domains) -->
+            <section class="section-container">
+                <div class="section-header">
+                    <div>
+                        <h2 class="section-title">Explore by Domain</h2>
+                        <p class="section-subtitle">Browse through 8 specialized consumer product categories</p>
+                    </div>
+                    <button class="link-btn" onclick="navigateTo('categories')">View All Categories &rarr;</button>
+                </div>
+                <div class="categories-grid" id="homeCategoriesGrid">
+                    <!-- Populated dynamically via JS -->
+                </div>
+            </section>
+
+            <!-- Recommended For You (AI-Personalized Section) -->
+            <section class="section-container" id="homeRecsSection">
+                <div class="section-header">
+                    <div>
+                        <div class="badge-tag-wrap">
+                            <span class="ai-badge-live">&#9889; AI PERSONALIZED</span>
+                            <span class="section-hint" id="homeRecsHint">Tuned for Alex Rivera</span>
+                        </div>
+                        <h2 class="section-title">Recommended For You</h2>
+                        <p class="section-subtitle">Statistically significant product matches based on your purchase history and basket affinity</p>
+                    </div>
+                    <button class="link-btn" id="refreshHomeRecsBtn" title="Re-query AI recommender engine">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                        Refresh Rules
+                    </button>
+                </div>
+                <div class="product-cards-grid" id="homeRecommendationsGrid">
+                    <!-- Populated dynamically via loadRecommendations() -->
+                </div>
+            </section>
+
+            <!-- Frequently Bought Together Bundle Banner -->
+            <section class="section-container">
+                <div class="fbt-banner-card" id="homeFbtBanner">
+                    <div class="fbt-badge">&#128293; FREQUENTLY PURCHASED TOGETHER</div>
+                    <div class="fbt-content-split">
+                        <div class="fbt-text">
+                            <h3 id="fbtHeadline">Workstation Productivity Bundle</h3>
+                            <p id="fbtExplanation">Customers who purchased the <strong>UltraBook Pro 15-inch Laptop</strong> frequently co-purchased the <strong>Multi-Port USB-C Hub</strong> and <strong>Ergonomic Wireless Mouse</strong> (Confidence: 100.0%, Lift: 23.7x).</p>
+                            <div class="fbt-price-row">
+                                <span class="fbt-bundle-price">$1389.97</span>
+                                <span class="fbt-saving-tag">Includes 3 Matched Items</span>
+                            </div>
+                        </div>
+                        <div class="fbt-cta">
+                            <button class="btn-primary" onclick="quickAddBundle(['P101', 'P102', 'P104'])">Add Complete Bundle to Cart</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Trending / Best Sellers -->
+            <section class="section-container">
+                <div class="section-header">
+                    <div>
+                        <h2 class="section-title">Popular &amp; Top Rated</h2>
+                        <p class="section-subtitle">Community favorites aggregated directly from customer review scores and sales metrics</p>
+                    </div>
+                    <button class="link-btn" onclick="navigateTo('shop')">Browse Store &rarr;</button>
+                </div>
+                <div class="product-cards-grid" id="homeTrendingGrid">
+                    <!-- Populated dynamically from catalog -->
+                </div>
+            </section>
+        </section>
+
+        <!-- 2. SHOP / PRODUCTS VIEW -->
+        <section id="view-shop" class="page-view">
+            <div class="shop-layout">
+                <!-- Left Filter Sidebar -->
+                <aside class="shop-sidebar">
+                    <div class="sidebar-block">
+                        <div class="sidebar-header">
+                            <h3>Filters</h3>
+                            <button id="resetFiltersBtn" class="reset-filter-btn">Reset</button>
+                        </div>
+                    </div>
+
+                    <!-- Category Filter -->
+                    <div class="sidebar-block">
+                        <h4 class="filter-title">Category</h4>
+                        <div class="filter-category-list" id="shopCategoryFilters">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Price Filter -->
+                    <div class="sidebar-block">
+                        <h4 class="filter-title">Max Price</h4>
+                        <div class="price-slider-wrap">
+                            <input type="range" id="priceRangeSlider" min="10" max="1500" step="10" value="1500">
+                            <div class="price-display">Up to: <strong id="priceRangeDisplay">$1500</strong></div>
+                        </div>
+                    </div>
+
+                    <!-- Availability Filter -->
+                    <div class="sidebar-block">
+                        <h4 class="filter-title">Availability</h4>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="inStockOnlyCheckbox">
+                            <span>In Stock Only</span>
+                        </label>
+                    </div>
+
+                    <!-- Minimum Rating Filter -->
+                    <div class="sidebar-block">
+                        <h4 class="filter-title">Customer Rating</h4>
+                        <label class="radio-label">
+                            <input type="radio" name="ratingFilter" value="0" checked>
+                            <span>All Ratings</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="ratingFilter" value="4.5">
+                            <span>&#9733; 4.5 &amp; above</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="ratingFilter" value="4.0">
+                            <span>&#9733; 4.0 &amp; above</span>
+                        </label>
+                    </div>
+                </aside>
+
+                <!-- Shop Main Content -->
+                <div class="shop-main">
+                    <!-- Controls Bar -->
+                    <div class="shop-toolbar">
+                        <div class="toolbar-left">
+                            <span id="shopProductCount" class="results-count">Showing 45 products</span>
+                            <span id="activeFilterBadge" class="active-filter-pill" style="display:none;"></span>
+                        </div>
+                        <div class="toolbar-right">
+                            <label for="shopSortSelect">Sort by:</label>
+                            <select id="shopSortSelect" class="sort-select">
+                                <option value="featured">Featured / Default</option>
+                                <option value="price-asc">Price: Low to High</option>
+                                <option value="price-desc">Price: High to Low</option>
+                                <option value="rating">Highest Rated</option>
+                                <option value="name">Product Name (A-Z)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Products Grid -->
+                    <div class="product-cards-grid" id="shopCatalogGrid">
+                        <!-- Populated dynamically via JS -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. CATEGORIES VIEW -->
+        <section id="view-categories" class="page-view">
+            <div class="section-container">
+                <div class="section-header">
+                    <div>
+                        <h2 class="section-title">Product Domains &amp; Categories</h2>
+                        <p class="section-subtitle">All 8 normalized product domains built into the relational database</p>
+                    </div>
+                </div>
+                <div class="categories-full-grid" id="fullCategoriesGrid">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+        </section>
+
+        <!-- 4. CART VIEW (Full-Page Experience) -->
+        <section id="view-cart" class="page-view">
+            <div class="section-container cart-page-container">
+                <div class="section-header">
+                    <div>
+                        <h2 class="section-title">Your Shopping Cart</h2>
+                        <p class="section-subtitle">Items reserved with live stock checking</p>
+                    </div>
+                    <button class="link-btn" onclick="navigateTo('shop')">&larr; Continue Shopping</button>
+                </div>
+
+                <div class="cart-page-split">
+                    <!-- Cart Items Column -->
+                    <div class="cart-items-column" id="cartPageItems">
+                        <!-- Populated dynamically -->
+                    </div>
+
+                    <!-- Cart Order Summary -->
+                    <div class="cart-summary-column">
+                        <div class="order-summary-card">
+                            <h3 class="summary-title">Order Summary</h3>
+
+                            <!-- Free Shipping Progress -->
+                            <div class="shipping-meter-wrap">
+                                <div class="meter-text" id="shippingMeterText">Add $25.00 for FREE Express Shipping</div>
+                                <div class="meter-bar-bg">
+                                    <div class="meter-bar-fill" id="shippingMeterFill" style="width: 50%;"></div>
+                                </div>
+                            </div>
+
+                            <div class="summary-rows">
+                                <div class="summary-row">
+                                    <span>Subtotal</span>
+                                    <span id="summarySubtotal">$0.00</span>
+                                </div>
+                                <div class="summary-row">
+                                    <span>Shipping</span>
+                                    <span id="summaryShipping">FREE</span>
+                                </div>
+                                <div class="summary-row">
+                                    <span>Estimated Tax (8%)</span>
+                                    <span id="summaryTax">$0.00</span>
+                                </div>
+                                <div class="summary-divider"></div>
+                                <div class="summary-row total-row">
+                                    <span>Total</span>
+                                    <strong id="summaryGrandTotal">$0.00</strong>
+                                </div>
+                            </div>
+
+                            <button class="btn-primary btn-checkout-large" id="proceedToCheckoutBtn" onclick="navigateTo('checkout')">
+                                Proceed to Checkout
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                            </button>
+
+                            <div class="secure-checkout-notice">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                <span>Guaranteed ACID Transaction Persistence</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 5. CHECKOUT VIEW -->
+        <section id="view-checkout" class="page-view">
+            <div class="section-container checkout-container">
+                <div class="section-header">
+                    <div>
+                        <h2 class="section-title">Checkout &amp; Order Finalization</h2>
+                        <p class="section-subtitle">Atomic Transaction Execution &bull; BEGIN &rarr; COMMIT / ROLLBACK</p>
+                    </div>
+                    <button class="link-btn" onclick="navigateTo('cart')">&larr; Return to Cart</button>
+                </div>
+
+                <div class="checkout-split">
+                    <!-- Checkout Details Form -->
+                    <div class="checkout-form-column">
+                        <!-- Shipping Section -->
+                        <div class="checkout-card">
+                            <h3 class="checkout-section-title">1. Shipping Information</h3>
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label>Customer Name</label>
+                                    <input type="text" id="checkoutCustName" readonly>
+                                </div>
+                                <div class="form-group">
+                                    <label>Email Address</label>
+                                    <input type="email" id="checkoutCustEmail" readonly>
+                                </div>
+                                <div class="form-group full-width">
+                                    <label>Shipping City &amp; Region</label>
+                                    <input type="text" id="checkoutCustCity" readonly>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Payment Method Section -->
+                        <div class="checkout-card">
+                            <h3 class="checkout-section-title">2. Payment Method</h3>
+                            <div class="payment-options">
+                                <label class="payment-method-card active">
+                                    <input type="radio" name="checkoutPaymentMethod" value="CREDIT_CARD" checked>
+                                    <div class="pm-info">
+                                        <strong>Credit / Debit Card</strong>
+                                        <span>Visa, MasterCard, Amex</span>
+                                    </div>
+                                </label>
+                                <label class="payment-method-card">
+                                    <input type="radio" name="checkoutPaymentMethod" value="UPI">
+                                    <div class="pm-info">
+                                        <strong>Instant UPI / QR</strong>
+                                        <span>Direct bank transfer</span>
+                                    </div>
+                                </label>
+                                <label class="payment-method-card">
+                                    <input type="radio" name="checkoutPaymentMethod" value="NET_BANKING">
+                                    <div class="pm-info">
+                                        <strong>Net Banking</strong>
+                                        <span>All major supported banks</span>
+                                    </div>
+                                </label>
+                                <label class="payment-method-card">
+                                    <input type="radio" name="checkoutPaymentMethod" value="CASH_ON_DELIVERY">
+                                    <div class="pm-info">
+                                        <strong>Cash on Delivery (COD)</strong>
+                                        <span>Pay upon product receipt</span>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- ACID Demonstration Execution Box -->
+                        <div class="checkout-card acid-control-card">
+                            <div class="acid-header">
+                                <h3 class="checkout-section-title">3. Transaction Execution Mode</h3>
+                                <span class="badge-pill-academic">DBMS ACID Demonstration</span>
+                            </div>
+                            <p class="acid-desc">Test real transaction atomicity: Normal checkout executes `COMMIT` and updates stock via triggers. Simulated failure tests `ROLLBACK` and restores stock.</p>
+
+                            <div class="checkout-btn-actions">
+                                <button class="btn-success-checkout" id="checkoutCommitBtn" onclick="executeCheckoutFlow(false)">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                                    Place Order (Commit Transaction)
+                                </button>
+                                <button class="btn-simulate-fail" id="checkoutRollbackBtn" onclick="executeCheckoutFlow(true)">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                                    Simulate Payment Failure (Test Rollback)
+                                </button>
+                            </div>
+
+                            <!-- Transaction Audit Log Box -->
+                            <div class="checkout-audit-log" id="checkoutAuditLog" style="display:none;">
+                                <div class="audit-log-header">
+                                    <span>Transaction Execution Log</span>
+                                    <span class="audit-status" id="auditStatusPill">Processing</span>
+                                </div>
+                                <pre id="checkoutLogConsole" class="audit-console"></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Checkout Summary Column -->
+                    <div class="checkout-summary-column">
+                        <div class="order-summary-card">
+                            <h3 class="summary-title">Items in Order</h3>
+                            <div class="checkout-items-list" id="checkoutItemsList">
+                                <!-- Populated dynamically -->
+                            </div>
+                            <div class="summary-divider"></div>
+                            <div class="summary-rows">
+                                <div class="summary-row">
+                                    <span>Subtotal</span>
+                                    <span id="checkoutSubtotal">$0.00</span>
+                                </div>
+                                <div class="summary-row">
+                                    <span>Shipping</span>
+                                    <span>FREE</span>
+                                </div>
+                                <div class="summary-row total-row">
+                                    <span>Amount Due</span>
+                                    <strong id="checkoutTotal">$0.00</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 6. ORDER HISTORY VIEW -->
+        <section id="view-orders" class="page-view">
+            <div class="section-container">
+                <div class="section-header">
+                    <div>
+                        <h2 class="section-title">My Orders</h2>
+                        <p class="section-subtitle">Real-time purchase history retrieved from SQLite `orders` and `order_items`</p>
+                    </div>
+                    <button class="btn-secondary" onclick="navigateTo('shop')">Shop More</button>
+                </div>
+                <div class="orders-list-container" id="ordersListContainer">
+                    <!-- Populated dynamically via loadCustomerOrders() -->
+                </div>
+            </div>
+        </section>
+
+        <!-- 7. WISHLIST VIEW -->
+        <section id="view-wishlist" class="page-view">
+            <div class="section-container">
+                <div class="section-header">
+                    <div>
+                        <h2 class="section-title">Saved Wishlist</h2>
+                        <p class="section-subtitle">Saved items for later purchase</p>
+                    </div>
+                    <button class="link-btn" id="clearWishlistBtn" onclick="clearWishlist()">Clear Wishlist</button>
+                </div>
+                <div class="product-cards-grid" id="wishlistCardsGrid">
+                    <!-- Populated dynamically via renderWishlist() -->
+                </div>
+            </div>
+        </section>
+
+        <!-- 8. CUSTOMER PROFILE VIEW -->
+        <section id="view-profile" class="page-view">
+            <div class="section-container profile-container">
+                <div class="profile-hero-card">
+                    <div class="profile-avatar-large" id="profileAvatarLarge">AR</div>
+                    <div class="profile-info-wrap">
+                        <div class="profile-top-line">
+                            <h2 id="profileCustomerName">Alex Rivera</h2>
+                            <span class="profile-domain-pill" id="profileDomainPill">Computing &amp; Workstation Enthusiast</span>
+                        </div>
+                        <p id="profileMetaLine" class="profile-meta">Customer ID: <strong>C101</strong> &bull; Seattle &bull; alex.rivera@example.com</p>
+                    </div>
+                </div>
+
+                <!-- Account Stats Grid -->
+                <div class="profile-stats-grid">
+                    <div class="stat-card">
+                        <span class="stat-label">Total Completed Orders</span>
+                        <h3 class="stat-number" id="profileTotalOrders">0</h3>
+                        <span class="stat-sub">From analytical view `v_customer_purchase_summary`</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Lifetime Spend</span>
+                        <h3 class="stat-number" id="profileLifetimeSpend">$0.00</h3>
+                        <span class="stat-sub">Cumulative gross order value</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Items in Active Cart</span>
+                        <h3 class="stat-number" id="profileCartCount">0</h3>
+                        <span class="stat-sub">Live pending checkout entries</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Saved Wishlist Items</span>
+                        <h3 class="stat-number" id="profileWishlistCount">0</h3>
+                        <span class="stat-sub">Saved products</span>
+                    </div>
+                </div>
+
+                <div class="profile-actions-bar">
+                    <button class="btn-primary" onclick="navigateTo('orders')">View Full Order History</button>
+                    <button class="btn-secondary" onclick="navigateTo('wishlist')">View Saved Items</button>
+                    <button class="btn-secondary" onclick="openAdminPortal('customers')">Open in DBMS Customer Inspector</button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ==========================================================
+         ADMIN & INTELLIGENCE PORTAL (DEDICATED ACADEMIC & DBMS LAB)
+         ========================================================== -->
+    <div class="admin-portal-wrapper" id="adminPortalContainer" style="display:none;">
+        <div class="admin-portal-header">
+            <div class="admin-brand">
+                <span class="admin-tag">&#9881; MANAGEMENT &amp; DBMS LAB</span>
+                <span class="admin-title">NexusAI Intelligence Console</span>
+            </div>
+            <div class="admin-header-actions">
+                <span class="admin-status-indicator"><span class="pulse-dot"></span> SQLite Engine Connected</span>
+                <button class="btn-exit-admin" onclick="closeAdminPortal()">
+                    &larr; Return to Customer Storefront
+                </button>
+            </div>
+        </div>
+
+        <div class="admin-layout">
+            <!-- Admin Sidebar Navigation -->
+            <aside class="admin-sidebar">
+                <nav class="admin-nav">
+                    <button class="admin-nav-item active" data-admin-tab="dashboard" onclick="switchAdminTab('dashboard')">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                        Dashboard Overview
+                    </button>
+                    <button class="admin-nav-item" data-admin-tab="inventory" onclick="switchAdminTab('inventory')">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                        Products &amp; Inventory
+                    </button>
+                    <button class="admin-nav-item" data-admin-tab="orders" onclick="switchAdminTab('orders')">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                        All Orders
+                    </button>
+                    <button class="admin-nav-item" data-admin-tab="customers" onclick="switchAdminTab('customers')">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                        Customers Directory
+                    </button>
+                    <div class="admin-nav-divider">AI &amp; DBMS ENGINE</div>
+                    <button class="admin-nav-item" data-admin-tab="rules" onclick="switchAdminTab('rules')">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                        AI Intelligence (Apriori Rules)
+                    </button>
+                    <button class="admin-nav-item" data-admin-tab="dbms" onclick="switchAdminTab('dbms')">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+                        Database Lab (SQL &amp; Views)
+                    </button>
+                </nav>
+            </aside>
+
+            <!-- Admin Tab Content Body -->
+            <div class="admin-content-body">
+
+                <!-- 1. ADMIN DASHBOARD -->
+                <div id="admin-tab-dashboard" class="admin-tab-pane active">
+                    <h2 class="admin-section-title">E-Commerce Performance KPIs</h2>
+                    <!-- Stat Cards -->
+                    <div class="admin-kpi-grid">
+                        <div class="kpi-card">
+                            <span class="kpi-label">Gross Revenue</span>
+                            <h3 class="kpi-val" id="adminKpiRevenue">$0.00</h3>
+                            <span class="kpi-sub">Total lifetime completed orders</span>
+                        </div>
+                        <div class="kpi-card">
+                            <span class="kpi-label">Total Orders</span>
+                            <h3 class="kpi-val" id="adminKpiOrders">0</h3>
+                            <span class="kpi-sub">Across 8 product domains</span>
+                        </div>
+                        <div class="kpi-card">
+                            <span class="kpi-label">Registered Customers</span>
+                            <h3 class="kpi-val" id="adminKpiCustomers">25</h3>
+                            <span class="kpi-sub">Active profiles C101-C125</span>
+                        </div>
+                        <div class="kpi-card">
+                            <span class="kpi-label">Mined Association Rules</span>
+                            <h3 class="kpi-val" id="adminKpiRules">0</h3>
+                            <span class="kpi-sub">Confidence &ge; 50% &bull; Lift &ge; 1.2x</span>
+                        </div>
+                    </div>
+
+                    <!-- Domain Revenue Breakdown -->
+                    <div class="admin-card">
+                        <h3>Sales Revenue by Category Domain</h3>
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Domain Category</th>
+                                        <th>Items Sold</th>
+                                        <th>Gross Revenue</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="adminDomainSalesBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Recent Orders Table -->
+                    <div class="admin-card">
+                        <h3>Recent Store Transactions</h3>
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Order ID</th>
+                                        <th>Customer</th>
+                                        <th>Timestamp</th>
+                                        <th>Amount</th>
+                                        <th>Payment</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="adminRecentOrdersBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. ADMIN PRODUCTS & INVENTORY -->
+                <div id="admin-tab-inventory" class="admin-tab-pane">
+                    <div class="admin-pane-header">
+                        <h2>Product Catalog &amp; Inventory Levels</h2>
+                        <span class="badge-pill-light">45 Products Active</span>
+                    </div>
+                    <div class="admin-card">
+                        <div class="table-responsive">
+                            <table class="data-table" id="adminInventoryTable">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Product Name</th>
+                                        <th>Category</th>
+                                        <th>Price</th>
+                                        <th>Stock Quantity</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="adminInventoryBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. ADMIN ORDERS -->
+                <div id="admin-tab-orders" class="admin-tab-pane">
+                    <div class="admin-pane-header">
+                        <h2>Complete Orders Register</h2>
+                        <span class="badge-pill-light">Querying SQLite `orders`</span>
+                    </div>
+                    <div class="admin-card">
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Order ID</th>
+                                        <th>Customer</th>
+                                        <th>Date</th>
+                                        <th>Total Amount</th>
+                                        <th>Payment Method</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="adminAllOrdersBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. ADMIN CUSTOMERS -->
+                <div id="admin-tab-customers" class="admin-tab-pane">
+                    <div class="admin-pane-header">
+                        <h2>Customer Directory &amp; Lifetime Metrics</h2>
+                        <span class="badge-pill-light">View `v_customer_purchase_summary`</span>
+                    </div>
+                    <div class="admin-card">
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Customer ID</th>
+                                        <th>Name</th>
+                                        <th>City</th>
+                                        <th>Total Orders</th>
+                                        <th>Lifetime Spend</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="adminCustomersBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. ADMIN AI INTELLIGENCE (APRIORI EXPLORER) -->
+                <div id="admin-tab-rules" class="admin-tab-pane">
+                    <div class="admin-pane-header">
+                        <div>
+                            <h2>Apriori Association Rule Mining Explorer</h2>
+                            <p class="admin-subtitle">Inspect statistically significant co-purchase rules ($X \to Y$) generated from database transactions</p>
+                        </div>
+                        <span class="badge-pill-academic">Pure Python Apriori Algorithm</span>
+                    </div>
+
+                    <!-- Rule Filter Controls -->
+                    <div class="rule-controls-card">
+                        <div class="rule-slider-group">
+                            <div class="slider-item">
+                                <label for="minConfSlider">Minimum Confidence: <strong id="confValueDisplay">50%</strong></label>
+                                <input type="range" id="minConfSlider" min="0.4" max="1.0" step="0.05" value="0.5">
+                                <span class="slider-hint">Probability $P(Y \mid X)$ that item $Y$ is purchased given item $X$</span>
+                            </div>
+                            <div class="slider-item">
+                                <label for="minLiftSlider">Minimum Lift: <strong id="liftValueDisplay">1.2x</strong></label>
+                                <input type="range" id="minLiftSlider" min="1.0" max="25.0" step="0.5" value="1.2">
+                                <span class="slider-hint">How much more often $X$ and $Y$ occur together than expected by chance</span>
+                            </div>
+                        </div>
+                        <button id="applyRuleFilterBtn" class="btn-primary" style="align-self: flex-end;">Re-Filter Rules</button>
+                    </div>
+
+                    <!-- Rules Table -->
+                    <div class="admin-card">
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Antecedent ($X$)</th>
+                                        <th>&rarr;</th>
+                                        <th>Consequent ($Y$)</th>
+                                        <th>Support</th>
+                                        <th>Confidence</th>
+                                        <th>Lift</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="rulesTableBody">
+                                    <!-- Populated dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 6. ADMIN DATABASE LAB (SQL RUNNER & VIEWS) -->
+                <div id="admin-tab-dbms" class="admin-tab-pane">
+                    <div class="admin-pane-header">
+                        <div>
+                            <h2>DBMS Laboratory: Analytical Views &amp; SQL Console</h2>
+                            <p class="admin-subtitle">Live inspection of relational views, trigger verification, and sandboxed read-only SQL queries</p>
+                        </div>
+                        <span class="badge-pill-academic">Read-Only Engine Protection</span>
+                    </div>
+
+                    <!-- Analytical Views Section -->
+                    <div class="admin-card">
+                        <h3>1. Analytical Database Views</h3>
+                        <p class="view-intro">Click any view to query live rows directly from SQLite:</p>
+                        <div class="view-selector-bar">
+                            <button class="view-btn active" data-view="v_market_basket">v_market_basket</button>
+                            <button class="view-btn" data-view="v_customer_purchase_summary">v_customer_purchase_summary</button>
+                            <button class="view-btn" data-view="v_product_performance">v_product_performance</button>
+                            <button class="view-btn" data-view="v_frequent_product_pairs">v_frequent_product_pairs</button>
+                        </div>
+                        <div class="table-responsive" style="max-height: 320px; overflow-y: auto;">
+                            <table class="data-table">
+                                <thead id="dbmsViewHead"></thead>
+                                <tbody id="dbmsViewBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Live SQL Console -->
+                    <div class="admin-card">
+                        <h3>2. Live Read-Only SQL Query Runner</h3>
+                        <p class="view-intro">Execute custom `SELECT`, `EXPLAIN`, or `PRAGMA` queries against `ecommerce.db`:</p>
+
+                        <!-- Presets -->
+                        <div class="sql-preset-bar">
+                            <span class="preset-label">Query Presets:</span>
+                            <button class="sql-preset-btn" data-query="SELECT category_id, category_name FROM categories;">All Categories</button>
+                            <button class="sql-preset-btn" data-query="SELECT product_name, price, stock_quantity FROM products WHERE stock_quantity < 100;">Low Stock Products</button>
+                            <button class="sql-preset-btn" data-query="SELECT * FROM v_product_performance ORDER BY units_sold DESC LIMIT 5;">Top 5 Best Sellers</button>
+                            <button class="sql-preset-btn" data-query="EXPLAIN QUERY PLAN SELECT * FROM order_items WHERE order_id = 'ORD101';">Index Query Plan</button>
+                        </div>
+
+                        <div class="sql-editor-wrap">
+                            <textarea id="sqlQueryInput" rows="3" placeholder="SELECT * FROM products LIMIT 10;">SELECT * FROM products LIMIT 10;</textarea>
+                            <button id="runSqlBtn" class="btn-primary btn-run-sql">Run Query</button>
+                        </div>
+
+                        <!-- Query Output -->
+                        <div id="sqlErrorMsg" class="sql-error" style="display:none;"></div>
+                        <div id="sqlResultWrap" class="table-responsive" style="display:none; max-height: 350px; overflow-y: auto;">
+                            <table class="data-table">
+                                <thead id="sqlResultHead"></thead>
+                                <tbody id="sqlResultBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================================
+         PRODUCT DETAIL MODAL
+         ========================================================== -->
+    <div class="modal-overlay" id="productDetailModal" style="display:none;">
+        <div class="modal-dialog modal-product-dialog">
+            <button class="modal-close-btn" id="closeProductDetailBtn" aria-label="Close product details">&times;</button>
+            <div class="product-detail-layout" id="productDetailContent">
+                <!-- Populated dynamically via openProductModal(productId) -->
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================================
+         SLIDE-OUT QUICK CART DRAWER
+         ========================================================== -->
+    <div id="cartDrawerOverlay" class="cart-drawer-overlay">
+        <div class="cart-drawer">
+            <div class="cart-drawer-header">
+                <div class="drawer-title-wrap">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="9" cy="21" r="1"/>
+                        <circle cx="20" cy="21" r="1"/>
+                        <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+                    </svg>
+                    <h3>Your Cart</h3>
+                </div>
+                <button id="closeCartBtn" class="drawer-close-btn" aria-label="Close Shopping Cart">&times;</button>
+            </div>
+
+            <!-- Drawer Cart Items -->
+            <div class="drawer-items-list" id="drawerCartItems">
+                <!-- Populated dynamically -->
+            </div>
+
+            <!-- Drawer Footer -->
+            <div class="cart-drawer-footer">
+                <div class="drawer-subtotal-row">
+                    <span>Subtotal:</span>
+                    <strong id="drawerSubtotal">$0.00</strong>
+                </div>
+                <button class="btn-primary btn-drawer-checkout" onclick="closeCartDrawer(); navigateTo('checkout');">
+                    Proceed to Checkout
+                </button>
+                <button class="btn-secondary btn-drawer-viewcart" onclick="closeCartDrawer(); navigateTo('cart');">
+                    View Full Cart
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================================
+         FOOTER
+         ========================================================== -->
+    <footer class="ecommerce-footer" id="storefrontFooter">
+        <div class="footer-container">
+            <div class="footer-grid">
+                <!-- Col 1: Brand Info -->
+                <div class="footer-col brand-col">
+                    <div class="nav-brand">
+                        <div class="logo-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+                                <polyline points="2 17 12 22 22 17"/>
+                                <polyline points="2 12 12 17 22 12"/>
+                            </svg>
+                        </div>
+                        <span class="brand-title">Nexus<span class="brand-accent">AI</span></span>
+                    </div>
+                    <p class="footer-desc">Professional e-commerce architecture powered by Third Normal Form (3NF) relational DBMS, ACID transaction guarantees, and Apriori association rule mining.</p>
+                </div>
+
+                <!-- Col 2: Shop Domains -->
+                <div class="footer-col">
+                    <h4>Product Domains</h4>
+                    <ul class="footer-links">
+                        <li><a href="javascript:void(0)" onclick="filterShopByCategory('CAT01')">Computing &amp; Laptops</a></li>
+                        <li><a href="javascript:void(0)" onclick="filterShopByCategory('CAT02')">Mobile &amp; Audio Gear</a></li>
+                        <li><a href="javascript:void(0)" onclick="filterShopByCategory('CAT03')">Gaming &amp; Consoles</a></li>
+                        <li><a href="javascript:void(0)" onclick="filterShopByCategory('CAT04')">Photography &amp; Lenses</a></li>
+                        <li><a href="javascript:void(0)" onclick="filterShopByCategory('CAT07')">Specialty Coffee Bar</a></li>
+                    </ul>
+                </div>
+
+                <!-- Col 3: Customer Care -->
+                <div class="footer-col">
+                    <h4>Customer Portal</h4>
+                    <ul class="footer-links">
+                        <li><a href="javascript:void(0)" onclick="navigateTo('orders')">Order History</a></li>
+                        <li><a href="javascript:void(0)" onclick="navigateTo('wishlist')">Saved Wishlist</a></li>
+                        <li><a href="javascript:void(0)" onclick="navigateTo('profile')">Account Profile</a></li>
+                        <li><a href="javascript:void(0)" onclick="navigateTo('cart')">Shopping Cart</a></li>
+                    </ul>
+                </div>
+
+                <!-- Col 4: Academic DBMS Lab -->
+                <div class="footer-col">
+                    <h4>Database &amp; AI Intelligence</h4>
+                    <p class="footer-lab-text">Inspect relational views, inventory triggers, Apriori confidence metrics, and run read-only SQL queries.</p>
+                    <button class="btn-footer-lab" onclick="openAdminPortal('dashboard')">
+                        Open DBMS Lab &amp; Analytics &rarr;
+                    </button>
+                </div>
+            </div>
+
+            <div class="footer-bottom">
+                <p>&copy; 2026 NexusAI DBMS Project &bull; 9 Relational Tables &bull; ACID Transactions &bull; Apriori Market Basket Analysis</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Toast Notifications Container -->
     <div id="toastContainer" class="toast-container"></div>
 
+    <!-- JavaScript Controller -->
     <script src="app.js"></script>
 </body>
 </html>
