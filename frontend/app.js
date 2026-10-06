@@ -287,6 +287,8 @@ window.adjustModalQty = adjustModalQty;
 window.updateItemQuantity = updateItemQuantity;
 window.removeFromCart = removeFromCart;
 window.moveWishlistToCart = moveWishlistToCart;
+window.quickAddBundle = quickAddBundle;
+window.recordSessionEvent = recordSessionEvent;
 
 // ==========================================================
 // 2. CUSTOMER PROFILES & IDENTITY
@@ -622,6 +624,24 @@ function filterShopByCategory(catId) {
     filterAndRenderShopCatalog();
 }
 
+// Phase 5: Lightweight session event recorder
+async function recordSessionEvent(customerId, productId = null, eventType = "PRODUCT_VIEW") {
+    if (!customerId) return;
+    try {
+        await fetch(`${API_BASE}/api/events/record`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                customer_id: customerId,
+                product_id: productId,
+                event_type: eventType
+            })
+        });
+    } catch (e) {
+        // Silent fail for non-blocking analytics
+    }
+}
+
 async function recordSearch(query) {
     if (!query || query.length < 2) return;
     try {
@@ -633,6 +653,7 @@ async function recordSearch(query) {
                 query: query
             })
         });
+        await recordSessionEvent(activeCustomerId, null, "SEARCH");
     } catch (e) {}
 }
 
@@ -764,16 +785,38 @@ function createProductCardHtml(prod, aiMeta = null) {
     let aiReasonHtml = "";
     if (aiMeta) {
         let pillClass = "apriori";
-        if (aiMeta.algorithm && aiMeta.algorithm.includes("Cosine")) pillClass = "content";
-        else if (aiMeta.algorithm && aiMeta.algorithm.includes("Rating")) pillClass = "top-rated";
+        let typeBadge = "";
+        const recType = aiMeta.recommendation_type || "";
+        if (recType === "BASED_ON_RECENT_SEARCH" || (aiMeta.algorithm && aiMeta.algorithm.includes("Search"))) {
+            pillClass = "search";
+            typeBadge = "&#128269; Based On Recent Search";
+        } else if (recType === "COMPLETE_YOUR_SETUP" || recType === "FREQUENTLY_BOUGHT_TOGETHER") {
+            pillClass = "setup";
+            typeBadge = recType === "COMPLETE_YOUR_SETUP" ? "&#9889; Complete Your Setup" : "&#128279; Frequently Bought Together";
+        } else if (recType === "BECAUSE_YOU_VIEWED" || (aiMeta.algorithm && aiMeta.algorithm.includes("Cosine"))) {
+            pillClass = "content";
+            typeBadge = "&#128065; Because You Viewed This";
+        } else if (recType === "BEST_ALTERNATIVES") {
+            pillClass = "alternative";
+            typeBadge = "&#128260; In-Stock Alternative";
+        } else if (recType === "PERSONALIZED_FOR_YOU") {
+            pillClass = "personalized";
+            typeBadge = "&#127919; Personalized For You";
+        } else {
+            pillClass = "top-rated";
+            typeBadge = "&#11088; Community Top Pick";
+        }
 
         aiReasonHtml = `
             <div class="ai-reason-pill ${pillClass}">
+                <div style="font-weight:700; font-size:0.72rem; margin-bottom:0.2rem; text-transform:uppercase; letter-spacing:0.03em;">${typeBadge}</div>
                 ${aiMeta.reason}
                 ${aiMeta.confidence ? `<br><strong>Confidence: ${(aiMeta.confidence * 100).toFixed(1)}% &bull; Lift: ${aiMeta.lift.toFixed(2)}x</strong>` : ''}
             </div>
         `;
     }
+
+    const isOutOfStock = prod.stock_quantity <= 0;
 
     return `
         <div class="product-card" id="card-${prod.product_id}">
@@ -805,10 +848,16 @@ function createProductCardHtml(prod, aiMeta = null) {
                     <span class="card-price">${formatMoney(prod.price)}</span>
                     <div>${stockStatus}</div>
                 </div>
-                <button class="btn-add-cart" onclick="addProductToCart('${prod.product_id}', 1, event)">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                    Add
-                </button>
+                ${isOutOfStock ? `
+                    <button class="btn-add-cart" style="background:rgba(244,63,94,0.15); color:#fb7185; border:1px solid rgba(244,63,94,0.3); font-size:0.75rem; padding:0.4rem 0.65rem;" onclick="openProductModal('${prod.product_id}')">
+                        Find Alternatives
+                    </button>
+                ` : `
+                    <button class="btn-add-cart" onclick="addProductToCart('${prod.product_id}', 1, event)">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        Add
+                    </button>
+                `}
             </div>
         </div>
     `;
@@ -824,6 +873,21 @@ async function loadRecommendations(customerId) {
         if (json.status === "success") {
             const data = json.data;
             const recGrid = document.getElementById("homeRecommendationsGrid");
+            const hintEl = document.getElementById("homeRecsHint");
+            if (hintEl) {
+                const ctxType = data.context_type || "default";
+                const cust = allCustomers.find(c => c.customer_id === customerId);
+                const custName = cust ? cust.name : customerId;
+                if (ctxType === "search_dominant") {
+                    hintEl.innerText = `Search Intent Tuned for ${custName}`;
+                } else if (ctxType === "cart") {
+                    hintEl.innerText = `Cart-Aware Tuning for ${custName}`;
+                } else if (ctxType === "cold_start") {
+                    hintEl.innerText = `Popularity Baseline for ${custName}`;
+                } else {
+                    hintEl.innerText = `Personalized for ${custName}`;
+                }
+            }
             if (recGrid) {
                 if (!data.recommendations || data.recommendations.length === 0) {
                     recGrid.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); padding: 2rem;">No active recommendations for this profile yet.</div>`;
@@ -832,10 +896,12 @@ async function loadRecommendations(customerId) {
 
                 recGrid.innerHTML = data.recommendations.map(rec => {
                     return createProductCardHtml(rec, {
+                        recommendation_type: rec.recommendation_type,
                         reason: rec.reason,
                         algorithm: rec.algorithm,
                         confidence: rec.confidence,
-                        lift: rec.lift
+                        lift: rec.lift,
+                        score: rec.score
                     });
                 }).join("");
             }
@@ -866,12 +932,15 @@ async function openProductModal(productId) {
         </div>
     `;
 
+    // Phase 5: Log session view event for context-aware intelligence
+    recordSessionEvent(activeCustomerId, productId, "PRODUCT_VIEW");
+
     try {
         const res = await fetch(`${API_BASE}/api/product/${productId}`);
         const json = await res.json();
         if (json.status === "success") {
             const prod = json.product;
-            renderProductModalDetails(prod);
+            await renderProductModalDetails(prod);
         } else {
             productDetailContent.innerHTML = `<p style="color:var(--accent-rose); text-align:center;">Product not found.</p>`;
         }
@@ -880,59 +949,20 @@ async function openProductModal(productId) {
     }
 }
 
-function renderProductModalDetails(prod) {
+async function renderProductModalDetails(prod) {
     const isWishlisted = currentWishlist.has(prod.product_id);
     const iconSvg = getCategoryIconSvg(prod.category_id);
+    const isOutOfStock = prod.stock_quantity <= 0;
 
-    // Frequently bought bundle
-    let fbtHtml = "";
-    if (prod.frequently_bought && prod.frequently_bought.length > 0) {
-        const fbtItem = prod.frequently_bought[0];
-        const bundleTotal = formatMoney(prod.price + fbtItem.price);
-        fbtHtml = `
-            <div class="detail-extra-section">
-                <h4>Frequently Bought Together</h4>
-                <div class="fbt-banner-card" style="padding: 1.25rem;">
-                    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem;">
-                        <div>
-                            <p style="font-size:0.88rem; margin-bottom:0.35rem;">
-                                <strong>${prod.product_name}</strong> + <strong>${fbtItem.product_name}</strong>
-                            </p>
-                            <span style="font-size:0.75rem; color:#818cf8;">
-                                Apriori Mined Association (Confidence: ${(fbtItem.confidence * 100).toFixed(1)}%, Lift: ${fbtItem.lift.toFixed(2)}x)
-                            </span>
-                        </div>
-                        <div style="display:flex; align-items:center; gap:1rem;">
-                            <span style="font-size:1.25rem; font-weight:800;">${bundleTotal}</span>
-                            <button class="btn-primary" onclick="quickAddBundle(['${prod.product_id}', '${fbtItem.product_id}'])">
-                                Add Both to Cart
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-
-    // Similar products
-    let similarHtml = "";
-    if (prod.similar_products && prod.similar_products.length > 0) {
-        similarHtml = `
-            <div class="detail-extra-section">
-                <h4>Similar Items (Content-Based Cosine Match)</h4>
-                <div class="mini-cards-row">
-                    ${prod.similar_products.map(sim => `
-                        <div class="mini-product-card">
-                            <div>
-                                <span style="font-size:0.7rem; color:var(--text-muted);">${sim.category_name}</span>
-                                <h5 style="cursor:pointer;" onclick="openProductModal('${sim.product_id}')">${escapeHtml(sim.product_name)}</h5>
-                            </div>
-                            <div style="display:flex; align-items:center; justify-content:space-between; margin-top:0.75rem;">
-                                <span>${formatMoney(sim.price)}</span>
-                                <button class="btn-add-cart" style="padding:0.25rem 0.6rem; font-size:0.75rem;" onclick="addProductToCart('${sim.product_id}', 1, event)">+ Add</button>
-                            </div>
-                        </div>
-                    `).join("")}
+    // Out-of-Stock alert
+    let oosAlertHtml = "";
+    if (isOutOfStock) {
+        oosAlertHtml = `
+            <div class="out-of-stock-alert">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <div>
+                    <strong>Item Currently Out of Stock</strong>
+                    <p>This product is temporarily sold out. Our recommendation engine has automatically selected top in-stock alternatives with matching technical specifications below.</p>
                 </div>
             </div>
         `;
@@ -941,8 +971,8 @@ function renderProductModalDetails(prod) {
     // Customer Reviews
     let reviewsHtml = `
         <div class="detail-extra-section">
-            <h4>Verified Customer Reviews (${prod.reviews.length})</h4>
-            ${prod.reviews.length === 0 ? '<p style="color:var(--text-muted); font-size:0.85rem;">No reviews yet for this item.</p>' : `
+            <h4>Verified Customer Reviews (${prod.reviews ? prod.reviews.length : 0})</h4>
+            ${!prod.reviews || prod.reviews.length === 0 ? '<p style="color:var(--text-muted); font-size:0.85rem;">No reviews yet for this item.</p>' : `
                 <div style="display:flex; flex-direction:column; gap:0.85rem;">
                     ${prod.reviews.map(r => `
                         <div style="background:var(--bg-card); padding:0.85rem; border-radius:var(--radius-sm); border:1px solid var(--border-subtle);">
@@ -959,7 +989,9 @@ function renderProductModalDetails(prod) {
         </div>
     `;
 
+    // Render primary modal shell first
     productDetailContent.innerHTML = `
+        ${oosAlertHtml}
         <div class="product-detail-top">
             <div class="detail-img-box">
                 <div style="width:72px; height:72px; margin-bottom:1rem;">${iconSvg}</div>
@@ -977,22 +1009,30 @@ function renderProductModalDetails(prod) {
 
                 <div class="detail-price-box">
                     <span class="detail-price">${formatMoney(prod.price)}</span>
-                    <span class="stock-status-pill in-stock">In Stock: ${prod.stock_quantity} units</span>
+                    ${isOutOfStock ? 
+                        '<span class="stock-status-pill out-of-stock">Out of Stock (0 units)</span>' : 
+                        `<span class="stock-status-pill in-stock">In Stock: ${prod.stock_quantity} units</span>`}
                 </div>
 
                 <p class="detail-desc">${escapeHtml(prod.description || 'Premium grade hardware engineered for performance and longevity.')}</p>
 
                 <div class="detail-actions-row">
-                    <div class="item-qty-selector">
-                        <button class="qty-btn" onclick="adjustModalQty(-1)">&minus;</button>
-                        <input type="number" id="modalQtyInput" class="qty-input" value="1" min="1" max="${prod.stock_quantity}" readonly>
-                        <button class="qty-btn" onclick="adjustModalQty(1)">&plus;</button>
-                    </div>
+                    ${!isOutOfStock ? `
+                        <div class="item-qty-selector">
+                            <button class="qty-btn" onclick="adjustModalQty(-1)">&minus;</button>
+                            <input type="number" id="modalQtyInput" class="qty-input" value="1" min="1" max="${prod.stock_quantity}" readonly>
+                            <button class="qty-btn" onclick="adjustModalQty(1)">&plus;</button>
+                        </div>
 
-                    <button class="detail-btn-cart" onclick="addModalProductToCart('${prod.product_id}')">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
-                        Add to Cart
-                    </button>
+                        <button class="detail-btn-cart" onclick="addModalProductToCart('${prod.product_id}')">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+                            Add to Cart
+                        </button>
+                    ` : `
+                        <button class="detail-btn-cart btn-disabled" disabled style="opacity:0.5; cursor:not-allowed;">
+                            Item Temporarily Unavailable
+                        </button>
+                    `}
 
                     <button class="detail-btn-wishlist ${isWishlisted ? 'active' : ''}" onclick="toggleWishlist('${prod.product_id}', event)">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
@@ -1002,10 +1042,148 @@ function renderProductModalDetails(prod) {
             </div>
         </div>
 
-        ${fbtHtml}
-        ${similarHtml}
+        <div id="modalContextSections">
+            <!-- Dynamically loaded contextual intelligence -->
+        </div>
+
         ${reviewsHtml}
     `;
+
+    // Load contextual recommendation sections asynchronously
+    const contextBox = document.getElementById("modalContextSections");
+    if (!contextBox) return;
+
+    if (isOutOfStock) {
+        // Load in-stock alternatives
+        try {
+            const altRes = await fetch(`${API_BASE}/api/recommendations/alternatives/${prod.product_id}`);
+            const altJson = await altRes.json();
+            if (altJson.status === "success" && altJson.alternatives && altJson.alternatives.length > 0) {
+                contextBox.innerHTML = `
+                    <div class="detail-extra-section" style="border-top: 2px solid var(--accent-rose);">
+                        <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.5rem;">
+                            <span class="stock-status-pill out-of-stock">&#9888; OUT OF STOCK ALTERNATIVES</span>
+                            <h4 style="margin:0;">Best Available In-Stock Alternatives</h4>
+                        </div>
+                        <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:1rem;">
+                            Selected based on technical spec similarity, category match, price range, and verified customer ratings:
+                        </p>
+                        <div class="mini-cards-row">
+                            ${altJson.alternatives.map(alt => `
+                                <div class="alternative-card">
+                                    <div>
+                                        <span class="alternative-match-badge">${Math.round(alt.similarity * 100)}% Spec Match</span>
+                                        <div style="font-size:0.72rem; color:var(--text-muted);">${alt.category_name || ''}</div>
+                                        <h5 style="cursor:pointer;" onclick="openProductModal('${alt.product_id}')">${escapeHtml(alt.product_name)}</h5>
+                                        <div class="stars" style="font-size:0.72rem; margin: 0.35rem 0;">${renderStars(alt.avg_rating || 4.7)} <span style="color:var(--text-muted);">(${alt.review_count || 12})</span></div>
+                                    </div>
+                                    <div>
+                                        <div style="display:flex; align-items:baseline; justify-content:space-between; margin-bottom:0.5rem;">
+                                            <span style="font-size:1.05rem; font-weight:800; color:var(--text-primary);">${formatMoney(alt.price)}</span>
+                                            <span style="font-size:0.75rem; color:var(--accent-emerald);">In Stock (${alt.stock_quantity})</span>
+                                        </div>
+                                        <button class="btn-primary" style="width:100%; padding:0.4rem; font-size:0.8rem;" onclick="addProductToCart('${alt.product_id}', 1, event); closeProductModal();">
+                                            Switch &amp; Add to Cart
+                                        </button>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+        } catch (e) {
+            console.error("Error loading alternatives:", e);
+        }
+    } else {
+        // In-stock product: fetch Frequently Bought Together bundle and Viewed-Together context
+        let sectionsHtml = "";
+
+        // 1. Apriori bundle
+        try {
+            const bRes = await fetch(`${API_BASE}/api/recommendations/bundle/${prod.product_id}`);
+            const bJson = await bRes.json();
+            if (bJson.status === "success" && bJson.bundle && bJson.bundle.items.length > 0) {
+                const bundle = bJson.bundle;
+                const bundleIds = [prod.product_id, ...bundle.items.map(i => i.product_id)];
+                sectionsHtml += `
+                    <div class="detail-extra-section">
+                        <h4>Frequently Bought Together</h4>
+                        <div class="fbt-bundle-full">
+                            <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.5rem;">
+                                <span class="stock-status-pill in-stock">&#128293; APRIORI MINED BUNDLE</span>
+                                <span style="font-size:0.78rem; color:#a5b4fc;">Frequently purchased together in single checkout transactions</span>
+                            </div>
+                            <div class="fbt-bundle-items-row">
+                                <div class="fbt-bundle-item-chip">
+                                    <strong>This Item:</strong> ${escapeHtml(prod.product_name)} (${formatMoney(prod.price)})
+                                </div>
+                                ${bundle.items.map(item => `
+                                    <span class="fbt-plus-symbol">+</span>
+                                    <div class="fbt-bundle-item-chip" style="cursor:pointer;" onclick="openProductModal('${item.product_id}')">
+                                        <span>${escapeHtml(item.product_name)}</span>
+                                        <strong style="color:var(--primary-light);">${formatMoney(item.price)}</strong>
+                                    </div>
+                                `).join('')}
+                            </div>
+                            <div class="fbt-bundle-pricing">
+                                <div>
+                                    <div style="font-size:0.82rem; color:var(--text-muted);">
+                                        Regular Total: <span style="text-decoration:line-through;">${formatMoney(bundle.regular_total)}</span>
+                                    </div>
+                                    <div style="display:flex; align-items:center; gap:0.5rem;">
+                                        <span style="font-size:1.3rem; font-weight:800; color:#fff;">Bundle Price: ${formatMoney(bundle.bundle_price)}</span>
+                                        <span class="stock-status-pill in-stock">Save 10% (${formatMoney(bundle.savings)})</span>
+                                    </div>
+                                </div>
+                                <div style="display:flex; gap:0.5rem;">
+                                    <button class="btn-primary" onclick="quickAddBundle([${bundleIds.map(id => `'${id}'`).join(', ')}])">
+                                        Add Complete Bundle (${bundleIds.length} Items)
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        } catch (e) {
+            console.error("Error loading bundle:", e);
+        }
+
+        // 2. Viewed-Together / Setup context
+        try {
+            const ctxRes = await fetch(`${API_BASE}/api/recommendations/${activeCustomerId}?current_product_id=${prod.product_id}&context_type=product_view&top_n=3`);
+            const ctxJson = await ctxRes.json();
+            if (ctxJson.status === "success" && ctxJson.data && ctxJson.data.recommendations.length > 0) {
+                sectionsHtml += `
+                    <div class="detail-extra-section">
+                        <h4>Because You Viewed This (Context-Aware Matches)</h4>
+                        <div class="mini-cards-row">
+                            ${ctxJson.data.recommendations.map(r => `
+                                <div class="mini-product-card">
+                                    <div>
+                                        <span style="font-size:0.7rem; color:var(--text-muted);">${r.category_name || ''}</span>
+                                        <h5 style="cursor:pointer; margin-top:0.25rem;" onclick="openProductModal('${r.product_id}')">${escapeHtml(r.product_name)}</h5>
+                                        <div style="font-size:0.72rem; color:#a5b4fc; margin-bottom:0.35rem;">
+                                            ${escapeHtml(r.reason)}
+                                        </div>
+                                    </div>
+                                    <div style="display:flex; align-items:center; justify-content:space-between; margin-top:0.75rem;">
+                                        <span style="font-size:0.92rem; font-weight:700;">${formatMoney(r.price)}</span>
+                                        <button class="btn-add-cart" style="padding:0.25rem 0.6rem; font-size:0.75rem;" onclick="addProductToCart('${r.product_id}', 1, event)">+ Add</button>
+                                    </div>
+                                </div>
+                            `).join("")}
+                        </div>
+                    </div>
+                `;
+            }
+        } catch (e) {
+            console.error("Error loading product view recs:", e);
+        }
+
+        contextBox.innerHTML = sectionsHtml;
+    }
 }
 
 function adjustModalQty(delta) {
@@ -1078,6 +1256,7 @@ async function addProductToCart(productId, quantity = 1, event = null, showNotif
                 const name = prod ? prod.product_name : "Product";
                 showToast(`Added ${name} to cart!`, "success");
             }
+            recordSessionEvent(activeCustomerId, productId, "ADD_TO_CART");
             await loadCart(activeCustomerId);
             await loadRecommendations(activeCustomerId);
         } else {
@@ -1121,6 +1300,8 @@ function renderDrawerCartItems(items) {
     if (!drawerCartItems) return;
 
     if (!items || items.length === 0) {
+        const drawerSug = document.getElementById("drawerSmartSuggestions");
+        if (drawerSug) drawerSug.style.display = "none";
         drawerCartItems.innerHTML = `
             <div style="text-align: center; color: var(--text-muted); margin-top: 4rem;">
                 <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity: 0.5; margin-bottom: 0.75rem;">
@@ -1144,6 +1325,9 @@ function renderDrawerCartItems(items) {
             </div>
         </div>
     `).join("");
+
+    // Phase 5: Smart suggestions inside cart drawer
+    loadDrawerSuggestions(activeCustomerId);
 }
 
 // Full Cart Page
@@ -1159,10 +1343,12 @@ function renderFullCartPageContent(cartData) {
     const checkoutBtn = document.getElementById("proceedToCheckoutBtn");
     const meterText = document.getElementById("shippingMeterText");
     const meterFill = document.getElementById("shippingMeterFill");
+    const sugSection = document.getElementById("cartSmartSuggestionsSection");
 
     if (!itemsCol) return;
 
     if (!cartData.items || cartData.items.length === 0) {
+        if (sugSection) sugSection.style.display = "none";
         itemsCol.innerHTML = `
             <div style="background: var(--bg-card); border-radius: var(--radius-lg); padding: 4rem; text-align: center;">
                 <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text-muted); margin-bottom:1rem; opacity:0.5;">
@@ -1221,6 +1407,68 @@ function renderFullCartPageContent(cartData) {
             </div>
         </div>
     `).join("");
+
+    // Phase 5: Complete Your Setup / Smart suggestions on full cart page
+    loadCartSuggestions(activeCustomerId);
+}
+
+// Phase 5: Fetch context-aware suggestions for current cart
+async function loadCartSuggestions(customerId) {
+    const sugSection = document.getElementById("cartSmartSuggestionsSection");
+    const sugGrid = document.getElementById("cartSmartSuggestionsGrid");
+    if (!sugSection || !sugGrid) return;
+
+    try {
+        const res = await fetch(`${API_BASE}/api/recommendations/${customerId}?context_type=cart&top_n=3`);
+        const json = await res.json();
+        if (json.status === "success" && json.data.recommendations && json.data.recommendations.length > 0) {
+            sugSection.style.display = "block";
+            sugGrid.innerHTML = json.data.recommendations.map(rec => {
+                return createProductCardHtml(rec, {
+                    recommendation_type: rec.recommendation_type || "COMPLETE_YOUR_SETUP",
+                    reason: rec.reason,
+                    algorithm: rec.algorithm,
+                    confidence: rec.confidence,
+                    lift: rec.lift,
+                    score: rec.score
+                });
+            }).join("");
+        } else {
+            sugSection.style.display = "none";
+        }
+    } catch (e) {
+        sugSection.style.display = "none";
+    }
+}
+
+// Phase 5: Fetch compact suggestions for cart drawer
+async function loadDrawerSuggestions(customerId) {
+    const drawerSug = document.getElementById("drawerSmartSuggestions");
+    if (!drawerSug) return;
+
+    try {
+        const res = await fetch(`${API_BASE}/api/recommendations/${customerId}?context_type=cart&top_n=2`);
+        const json = await res.json();
+        if (json.status === "success" && json.data.recommendations && json.data.recommendations.length > 0) {
+            drawerSug.style.display = "block";
+            drawerSug.innerHTML = `
+                <h5>&#9889; Frequently Added With Your Cart</h5>
+                ${json.data.recommendations.map(rec => `
+                    <div class="drawer-rec-row">
+                        <div style="flex:1; padding-right:0.5rem;">
+                            <div class="drawer-rec-name" onclick="openProductModal('${rec.product_id}')">${escapeHtml(rec.product_name)}</div>
+                            <div class="drawer-rec-price">${formatMoney(rec.price)} &bull; <span style="color:#a5b4fc;">${escapeHtml(rec.reason)}</span></div>
+                        </div>
+                        <button class="btn-add-cart" style="padding:0.25rem 0.6rem; font-size:0.75rem;" onclick="addProductToCart('${rec.product_id}', 1, event)">+ Add</button>
+                    </div>
+                `).join("")}
+            `;
+        } else {
+            drawerSug.style.display = "none";
+        }
+    } catch (e) {
+        drawerSug.style.display = "none";
+    }
 }
 
 async function updateItemQuantity(productId, newQty) {
@@ -1330,6 +1578,7 @@ async function executeCustomerOrder() {
         if (json.status === "success") {
             const resData = json.result;
             showOrderConfirmation(resData.order_id, resData.amount, paymentMethod);
+            recordSessionEvent(activeCustomerId, null, "PURCHASE");
             await loadCart(activeCustomerId);
             await loadRecommendations(activeCustomerId);
         } else {

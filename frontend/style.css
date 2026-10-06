@@ -1047,6 +1047,31 @@ input, select, textarea {
     color: #fde68a;
 }
 
+.ai-reason-pill.search {
+    background: rgba(6, 182, 212, 0.12);
+    border-color: rgba(6, 182, 212, 0.4);
+    color: #a5f3fc;
+}
+
+.ai-reason-pill.setup,
+.ai-reason-pill.bundle {
+    background: rgba(16, 185, 129, 0.12);
+    border-color: rgba(16, 185, 129, 0.4);
+    color: #a7f3d0;
+}
+
+.ai-reason-pill.personalized {
+    background: rgba(139, 92, 246, 0.12);
+    border-color: rgba(139, 92, 246, 0.4);
+    color: #ddd6fe;
+}
+
+.ai-reason-pill.alternative {
+    background: rgba(244, 63, 94, 0.12);
+    border-color: rgba(244, 63, 94, 0.4);
+    color: #fecdd3;
+}
+
 .card-footer {
     display: flex;
     align-items: center;
@@ -2887,3 +2912,160 @@ input, select, textarea {
     background: rgba(99, 102, 241, 0.22);
     border-color: #818cf8;
 }
+
+/* ==========================================================
+   PHASE 5: CONTEXT-AWARE PERSONALIZATION & SMART INTELLIGENCE
+   ========================================================== */
+.out-of-stock-alert {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    background: rgba(244, 63, 94, 0.12);
+    border: 1px solid rgba(244, 63, 94, 0.35);
+    border-radius: var(--radius-md);
+    padding: 0.9rem 1.1rem;
+    margin-bottom: 1.25rem;
+    color: #fecdd3;
+}
+
+.out-of-stock-alert svg {
+    color: var(--accent-rose);
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.out-of-stock-alert strong {
+    display: block;
+    font-size: 0.95rem;
+    color: #fff;
+    margin-bottom: 0.2rem;
+}
+
+.out-of-stock-alert p {
+    font-size: 0.85rem;
+    margin: 0;
+    color: #cbd5e1;
+}
+
+.alternative-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: var(--transition);
+}
+
+.alternative-card:hover {
+    border-color: var(--primary);
+    transform: translateY(-2px);
+}
+
+.alternative-match-badge {
+    display: inline-block;
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    border-radius: 9999px;
+    padding: 0.2rem 0.55rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.fbt-bundle-full {
+    background: linear-gradient(135deg, rgba(30, 27, 75, 0.6) 0%, rgba(15, 23, 42, 0.7) 100%);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    border-radius: var(--radius-md);
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+}
+
+.fbt-bundle-items-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin: 0.75rem 0;
+}
+
+.fbt-bundle-item-chip {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    padding: 0.4rem 0.75rem;
+    font-size: 0.82rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.fbt-plus-symbol {
+    color: var(--primary-light);
+    font-weight: 800;
+    font-size: 1.1rem;
+}
+
+.fbt-bundle-pricing {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-top: 1rem;
+    padding-top: 0.85rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.cart-smart-suggestions-section {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-card);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    margin-top: 2rem;
+}
+
+.drawer-smart-suggestions {
+    border-top: 1px solid var(--border-subtle);
+    padding: 1rem;
+    background: rgba(15, 23, 42, 0.5);
+}
+
+.drawer-smart-suggestions h5 {
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--primary-light);
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.drawer-rec-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.drawer-rec-row:last-child {
+    border-bottom: none;
+}
+
+.drawer-rec-name {
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    line-height: 1.25;
+}
+
+.drawer-rec-price {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+

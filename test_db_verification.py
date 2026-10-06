@@ -19,7 +19,7 @@ def verify_existing_db():
     tables = sorted([r[0] for r in c.fetchall()])
     expected_tables = sorted([
         "categories", "products", "customers", "orders", 
-        "order_items", "payments", "shopping_cart", "reviews", "search_history", "wishlist"
+        "order_items", "payments", "shopping_cart", "reviews", "search_history", "wishlist", "session_events"
     ])
     print("Tables found:", tables)
     assert tables == expected_tables, f"Tables mismatch! Expected {expected_tables}, got {tables}"
@@ -56,7 +56,8 @@ def verify_existing_db():
     expected_indexes = sorted([
         "idx_products_category", "idx_orders_customer", "idx_order_items_product",
         "idx_order_items_order", "idx_reviews_product_rating", "idx_search_customer",
-        "idx_cart_customer", "idx_wishlist_customer"
+        "idx_cart_customer", "idx_wishlist_customer",
+        "idx_session_events_customer", "idx_session_events_product"
     ])
     print("\nIndexes found:", indexes)
     for idx in expected_indexes:

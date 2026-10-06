@@ -293,6 +293,7 @@ def get_admin_overview():
 
 @app.route("/api/recommendations/<customer_id>", methods=["GET"])
 def get_recommendations(customer_id):
+    """Phase 4 & 5: Context-Aware Multi-Signal Hybrid Recommendations."""
     try:
         top_n = int(request.args.get("top_n", 4))
         if top_n <= 0:
@@ -300,10 +301,90 @@ def get_recommendations(customer_id):
     except (ValueError, TypeError):
         top_n = 4
 
-    res = recommender.recommend(customer_id, top_n=top_n)
+    current_product_id = request.args.get("current_product_id")
+    context_type = request.args.get("context_type")
+
+    res = recommender.recommend(
+        customer_id,
+        current_product_id=current_product_id,
+        context_type=context_type,
+        top_n=top_n
+    )
     if "error" in res:
         return jsonify({"status": "error", "message": res["error"]}), 404
     return jsonify({"status": "success", "data": res})
+
+
+@app.route("/api/recommendations/bundle/<product_id>", methods=["GET"])
+def get_frequently_bought_bundle(product_id):
+    """Phase 5: Genuine Frequently Bought Together bundle with instant bundle savings."""
+    try:
+        top_n = int(request.args.get("top_n", 2))
+    except (ValueError, TypeError):
+        top_n = 2
+    res = recommender.recommend_frequently_bought_together(product_id, top_n=top_n)
+    if "error" in res:
+        return jsonify({"status": "error", "message": res["error"]}), 404
+    return jsonify({"status": "success", "bundle": res})
+
+
+@app.route("/api/recommendations/alternatives/<product_id>", methods=["GET"])
+def get_product_alternatives(product_id):
+    """Phase 5: High-quality, in-stock alternatives for out-of-stock or product comparison."""
+    try:
+        top_n = int(request.args.get("top_n", 3))
+    except (ValueError, TypeError):
+        top_n = 3
+    res = recommender.recommend_product_alternatives(product_id, top_n=top_n)
+    if "error" in res:
+        return jsonify({"status": "error", "message": res["error"]}), 404
+    return jsonify({
+        "status": "success",
+        "data": res,
+        "alternatives": res.get("alternatives", [])
+    })
+
+
+@app.route("/api/recommendations/setup/<customer_id>", methods=["GET"])
+def get_complete_setup_recommendations(customer_id):
+    """Phase 5: Setup completion peripheral recommendations."""
+    current_product_id = request.args.get("current_product_id")
+    try:
+        top_n = int(request.args.get("top_n", 3))
+    except (ValueError, TypeError):
+        top_n = 3
+    res = recommender.recommend_complete_your_setup(customer_id, current_product_id=current_product_id, top_n=top_n)
+    if "error" in res:
+        return jsonify({"status": "error", "message": res["error"]}), 404
+    return jsonify({
+        "status": "success",
+        "data": res,
+        "setup": res.get("setup", [])
+    })
+
+
+@app.route("/api/events/record", methods=["POST"])
+def record_session_event():
+    """Phase 5: Real-time session event tracking (PRODUCT_VIEW, SEARCH, ADD_TO_CART, etc.)."""
+    data = request.json or {}
+    customer_id = data.get("customer_id")
+    product_id = data.get("product_id")
+    event_type = data.get("event_type", "PRODUCT_VIEW")
+
+    if not customer_id or not event_type:
+        return jsonify({"status": "error", "message": "Missing customer_id or event_type"}), 400
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO session_events (customer_id, product_id, event_type)
+        VALUES (?, ?, ?);
+    """, (customer_id, product_id, event_type))
+    conn.commit()
+    conn.close()
+
+    return jsonify({"status": "success", "message": "Session event logged"}), 201
+
 
 
 @app.route("/api/cart/<customer_id>", methods=["GET"])

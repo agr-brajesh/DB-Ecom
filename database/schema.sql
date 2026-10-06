@@ -117,3 +117,15 @@ CREATE TABLE IF NOT EXISTS wishlist (
     FOREIGN KEY (product_id) REFERENCES products(product_id) ON DELETE CASCADE,
     UNIQUE(customer_id, product_id)
 );
+
+-- 11. Session Events Table (Phase 5 Context-Aware Real-Time Interactions)
+CREATE TABLE IF NOT EXISTS session_events (
+    event_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    customer_id VARCHAR(10) NOT NULL,
+    product_id VARCHAR(10),
+    event_type VARCHAR(20) NOT NULL CHECK (event_type IN ('PRODUCT_VIEW', 'SEARCH', 'ADD_TO_CART', 'PURCHASE', 'WISHLIST_ADD')),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (customer_id) REFERENCES customers(customer_id) ON DELETE CASCADE,
+    FOREIGN KEY (product_id) REFERENCES products(product_id) ON DELETE CASCADE
+);
+
