@@ -397,6 +397,440 @@ def remove_from_cart():
     return jsonify({"status": "success", "message": "Item removed from cart."})
 
 
+@app.route("/api/cart/update", methods=["POST"])
+def update_cart_quantity():
+    """Phase 3: Update item quantity in cart with strict stock ceiling validation."""
+    data = request.json or {}
+    customer_id = data.get("customer_id")
+    product_id = data.get("product_id")
+    quantity = data.get("quantity")
+
+    if not customer_id or not product_id or quantity is None:
+        return jsonify({"status": "error", "message": "Missing customer_id, product_id, or quantity"}), 400
+
+    try:
+        quantity = int(quantity)
+        if quantity <= 0:
+            return jsonify({"status": "error", "message": "Quantity must be greater than 0"}), 400
+    except (ValueError, TypeError):
+        return jsonify({"status": "error", "message": "Invalid quantity provided"}), 400
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # Stock validation
+    cursor.execute("SELECT stock_quantity, product_name, price FROM products WHERE product_id = ?;", (product_id,))
+    prod = cursor.fetchone()
+    if not prod:
+        conn.close()
+        return jsonify({"status": "error", "message": "Product not found"}), 404
+
+    stock_quantity, prod_name, price = prod[0], prod[1], prod[2]
+    if quantity > stock_quantity:
+        conn.close()
+        return jsonify({
+            "status": "error",
+            "message": f"Requested quantity ({quantity}) exceeds available stock ({stock_quantity}) for {prod_name}"
+        }), 400
+
+    # Verify item exists in cart
+    cursor.execute("SELECT cart_id FROM shopping_cart WHERE customer_id = ? AND product_id = ?;", (customer_id, product_id))
+    existing = cursor.fetchone()
+    if not existing:
+        conn.close()
+        return jsonify({"status": "error", "message": "Item not found in cart"}), 404
+
+    cursor.execute("UPDATE shopping_cart SET quantity = ? WHERE customer_id = ? AND product_id = ?;", (quantity, customer_id, product_id))
+    conn.commit()
+
+    # Calculate updated cart total
+    cursor.execute("""
+        SELECT COALESCE(SUM(sc.quantity * p.price), 0.0)
+        FROM shopping_cart sc
+        JOIN products p ON sc.product_id = p.product_id
+        WHERE sc.customer_id = ?;
+    """, (customer_id,))
+    cart_total = cursor.fetchone()[0]
+    conn.close()
+
+    return jsonify({
+        "status": "success",
+        "message": f"Updated quantity for {prod_name}",
+        "product_id": product_id,
+        "quantity": quantity,
+        "subtotal": round(price * quantity, 2),
+        "cart_total": round(cart_total, 2)
+    })
+
+
+@app.route("/api/wishlist/<customer_id>", methods=["GET"])
+def get_customer_wishlist(customer_id):
+    """Phase 3: Fetch persistent customer wishlist items with category and ratings."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT w.wishlist_id, w.product_id, p.product_name, p.brand, p.price, p.stock_quantity,
+               cat.category_name, ROUND(AVG(r.rating), 1) as avg_rating, w.added_at
+        FROM wishlist w
+        JOIN products p ON w.product_id = p.product_id
+        JOIN categories cat ON p.category_id = cat.category_id
+        LEFT JOIN reviews r ON p.product_id = r.product_id
+        WHERE w.customer_id = ?
+        GROUP BY w.wishlist_id, p.product_id
+        ORDER BY w.added_at DESC;
+    """, (customer_id,))
+    rows = cursor.fetchall()
+    conn.close()
+
+    items = []
+    for r in rows:
+        items.append({
+            "wishlist_id": r[0],
+            "product_id": r[1],
+            "product_name": r[2],
+            "brand": r[3],
+            "price": r[4],
+            "stock_quantity": r[5],
+            "category_name": r[6],
+            "avg_rating": r[7] or 4.5,
+            "added_at": r[8]
+        })
+
+    return jsonify({"status": "success", "wishlist": items, "count": len(items)})
+
+
+@app.route("/api/wishlist/toggle", methods=["POST"])
+def toggle_wishlist():
+    """Phase 3: Toggle product in customer wishlist (Insert or Delete)."""
+    data = request.json or {}
+    customer_id = data.get("customer_id")
+    product_id = data.get("product_id")
+
+    if not customer_id or not product_id:
+        return jsonify({"status": "error", "message": "Missing customer_id or product_id"}), 400
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT product_name FROM products WHERE product_id = ?;", (product_id,))
+    prod = cursor.fetchone()
+    if not prod:
+        conn.close()
+        return jsonify({"status": "error", "message": "Product not found"}), 404
+
+    cursor.execute("SELECT wishlist_id FROM wishlist WHERE customer_id = ? AND product_id = ?;", (customer_id, product_id))
+    existing = cursor.fetchone()
+
+    if existing:
+        cursor.execute("DELETE FROM wishlist WHERE customer_id = ? AND product_id = ?;", (customer_id, product_id))
+        conn.commit()
+        in_wishlist = False
+        action = "removed"
+        message = f"Removed {prod[0]} from wishlist"
+    else:
+        cursor.execute("INSERT INTO wishlist (customer_id, product_id) VALUES (?, ?);", (customer_id, product_id))
+        conn.commit()
+        in_wishlist = True
+        action = "added"
+        message = f"Added {prod[0]} to wishlist"
+
+    cursor.execute("SELECT COUNT(*) FROM wishlist WHERE customer_id = ?;", (customer_id,))
+    wishlist_count = cursor.fetchone()[0]
+    conn.close()
+
+    return jsonify({
+        "status": "success",
+        "action": action,
+        "in_wishlist": in_wishlist,
+        "message": message,
+        "wishlist_count": wishlist_count
+    })
+
+
+@app.route("/api/search/suggestions", methods=["GET"])
+def get_search_suggestions():
+    """Phase 3: Real-time search typeahead suggestions matching products, brands, and categories."""
+    q = (request.args.get("q") or "").strip()
+    if len(q) < 2:
+        return jsonify({"status": "success", "suggestions": []})
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    like_pat = f"%{q}%"
+
+    # Match products & brands
+    cursor.execute("""
+        SELECT p.product_id, p.product_name, p.brand, p.price, cat.category_name
+        FROM products p
+        JOIN categories cat ON p.category_id = cat.category_id
+        WHERE p.product_name LIKE ? OR p.brand LIKE ? OR cat.category_name LIKE ?
+        ORDER BY CASE 
+            WHEN p.product_name LIKE ? THEN 1 
+            WHEN p.brand LIKE ? THEN 2 
+            ELSE 3 
+        END, p.product_name ASC
+        LIMIT 6;
+    """, (like_pat, like_pat, like_pat, f"{q}%", f"{q}%"))
+    prod_rows = cursor.fetchall()
+
+    # Match categories
+    cursor.execute("""
+        SELECT category_id, category_name FROM categories WHERE category_name LIKE ? LIMIT 2;
+    """, (like_pat,))
+    cat_rows = cursor.fetchall()
+    conn.close()
+
+    suggestions = []
+    for c in cat_rows:
+        suggestions.append({
+            "type": "category",
+            "id": c[0],
+            "title": c[1],
+            "subtitle": "Category"
+        })
+    for p in prod_rows:
+        suggestions.append({
+            "type": "product",
+            "id": p[0],
+            "title": p[1],
+            "subtitle": f"{p[2]} • {p[4]} • ${p[3]}"
+        })
+
+    return jsonify({"status": "success", "suggestions": suggestions})
+
+
+@app.route("/api/search/record", methods=["POST"])
+def record_search():
+    """Phase 3: Record customer search in search_history to authentically feed content-based engine."""
+    data = request.json or {}
+    customer_id = data.get("customer_id")
+    query = (data.get("query") or "").strip()
+
+    if not customer_id or not query:
+        return jsonify({"status": "error", "message": "Missing customer_id or query"}), 400
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO search_history (customer_id, search_query) VALUES (?, ?);", (customer_id, query))
+    conn.commit()
+    conn.close()
+
+    return jsonify({"status": "success", "message": "Search recorded"})
+
+
+@app.route("/api/profile/<customer_id>", methods=["GET"])
+def get_customer_profile(customer_id):
+    """Phase 3: Comprehensive customer account profile with statistics and history."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # Customer row
+    cursor.execute("SELECT customer_id, name, email, phone, city, created_at FROM customers WHERE customer_id = ?;", (customer_id,))
+    cust = cursor.fetchone()
+    if not cust:
+        conn.close()
+        return jsonify({"status": "error", "message": "Customer not found"}), 404
+
+    # Purchase summary view
+    cursor.execute("""
+        SELECT total_orders, total_items_purchased, lifetime_spend
+        FROM v_customer_purchase_summary WHERE customer_id = ?;
+    """, (customer_id,))
+    v_summary = cursor.fetchone()
+
+    total_orders = v_summary[0] if v_summary else 0
+    total_items = v_summary[1] if v_summary else 0
+    lifetime_spend = round(v_summary[2], 2) if v_summary else 0.0
+    avg_order_val = round(lifetime_spend / total_orders, 2) if total_orders > 0 else 0.0
+
+    # First and last order date from orders
+    cursor.execute("SELECT MIN(order_date), MAX(order_date) FROM orders WHERE customer_id = ?;", (customer_id,))
+    date_row = cursor.fetchone()
+    min_date = date_row[0] if date_row else None
+    max_date = date_row[1] if date_row else None
+
+    # Wishlist count
+    cursor.execute("SELECT COUNT(*) FROM wishlist WHERE customer_id = ?;", (customer_id,))
+    wishlist_count = cursor.fetchone()[0]
+
+    # Cart items count
+    cursor.execute("SELECT COUNT(*), COALESCE(SUM(quantity), 0) FROM shopping_cart WHERE customer_id = ?;", (customer_id,))
+    cart_summary = cursor.fetchone()
+
+    # Top preferred categories
+    cursor.execute("""
+        SELECT cat.category_name, COUNT(oi.order_item_id) as items_count, ROUND(SUM(oi.quantity * oi.unit_price), 2) as total_spent
+        FROM orders o
+        JOIN order_items oi ON o.order_id = oi.order_id
+        JOIN products p ON oi.product_id = p.product_id
+        JOIN categories cat ON p.category_id = cat.category_id
+        WHERE o.customer_id = ? AND o.order_status = 'COMPLETED'
+        GROUP BY cat.category_id, cat.category_name
+        ORDER BY total_spent DESC LIMIT 3;
+    """, (customer_id,))
+    top_categories = [{"category_name": r[0], "items_count": r[1], "total_spent": r[2]} for r in cursor.fetchall()]
+
+    # Recent searches
+    cursor.execute("""
+        SELECT search_query, searched_at FROM search_history WHERE customer_id = ? ORDER BY searched_at DESC LIMIT 5;
+    """, (customer_id,))
+    recent_searches = [{"query": r[0], "searched_at": r[1]} for r in cursor.fetchall()]
+
+    # Recent 5 orders
+    cursor.execute("""
+        SELECT o.order_id, o.order_date, o.total_amount, o.order_status,
+               COALESCE(p.payment_method, 'CREDIT_CARD') as payment_method,
+               COALESCE(p.payment_status, 'SUCCESS') as payment_status
+        FROM orders o
+        LEFT JOIN payments p ON o.order_id = p.order_id
+        WHERE o.customer_id = ?
+        ORDER BY o.order_date DESC LIMIT 5;
+    """, (customer_id,))
+    recent_orders = []
+    for r in cursor.fetchall():
+        recent_orders.append({
+            "order_id": r[0],
+            "order_date": r[1],
+            "total_amount": r[2],
+            "order_status": r[3],
+            "payment_method": r[4],
+            "payment_status": r[5]
+        })
+
+    conn.close()
+
+    return jsonify({
+        "status": "success",
+        "profile": {
+            "customer_id": cust[0],
+            "name": cust[1],
+            "email": cust[2],
+            "phone": cust[3],
+            "city": cust[4],
+            "registered_at": cust[5],
+            "total_orders": total_orders,
+            "total_items": total_items,
+            "lifetime_spend": lifetime_spend,
+            "avg_order_value": avg_order_val,
+            "first_order_date": min_date,
+            "last_order_date": max_date,
+            "wishlist_count": wishlist_count,
+            "cart_count": cart_summary[1],
+            "top_categories": top_categories,
+            "recent_searches": recent_searches,
+            "recent_orders": recent_orders
+        }
+    })
+
+
+@app.route("/api/home/sections", methods=["GET"])
+def get_home_sections():
+    """Phase 3: Dynamic homepage commerce sections backed by database views."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # 1. Featured / Best-sellers from v_product_performance
+    cursor.execute("""
+        SELECT p.product_id, p.product_name, p.brand, p.price, p.stock_quantity,
+               cat.category_name, ROUND(AVG(r.rating), 1) as avg_rating, COUNT(r.review_id) as review_count,
+               v.units_sold
+        FROM v_product_performance v
+        JOIN products p ON v.product_id = p.product_id
+        JOIN categories cat ON p.category_id = cat.category_id
+        LEFT JOIN reviews r ON p.product_id = r.product_id
+        GROUP BY p.product_id
+        ORDER BY v.units_sold DESC LIMIT 4;
+    """)
+    featured = []
+    for r in cursor.fetchall():
+        featured.append({
+            "product_id": r[0],
+            "product_name": r[1],
+            "brand": r[2],
+            "price": r[3],
+            "stock_quantity": r[4],
+            "category_name": r[5],
+            "avg_rating": r[6] or 4.8,
+            "review_count": r[7] or 0,
+            "badge": f"🔥 {r[8]} Sold"
+        })
+
+    # 2. Top-rated products
+    cursor.execute("""
+        SELECT p.product_id, p.product_name, p.brand, p.price, p.stock_quantity,
+               cat.category_name, ROUND(AVG(r.rating), 1) as avg_rating, COUNT(r.review_id) as review_count
+        FROM products p
+        JOIN categories cat ON p.category_id = cat.category_id
+        JOIN reviews r ON p.product_id = r.product_id
+        GROUP BY p.product_id
+        HAVING review_count >= 1
+        ORDER BY avg_rating DESC, review_count DESC LIMIT 4;
+    """)
+    top_rated = []
+    for r in cursor.fetchall():
+        top_rated.append({
+            "product_id": r[0],
+            "product_name": r[1],
+            "brand": r[2],
+            "price": r[3],
+            "stock_quantity": r[4],
+            "category_name": r[5],
+            "avg_rating": r[6],
+            "review_count": r[7],
+            "badge": f"⭐ {r[6]} Rating"
+        })
+
+    # 3. Frequent product pair / bundle from v_frequent_product_pairs
+    cursor.execute("""
+        SELECT product_a_id, product_a_name, product_b_id, product_b_name, co_purchase_count
+        FROM v_frequent_product_pairs
+        ORDER BY co_purchase_count DESC LIMIT 1;
+    """)
+    pair = cursor.fetchone()
+    bundle = None
+    if pair:
+        cursor.execute("SELECT product_id, product_name, price, brand FROM products WHERE product_id IN (?, ?);", (pair[0], pair[2]))
+        prods = {p[0]: {"id": p[0], "name": p[1], "price": p[2], "brand": p[3]} for p in cursor.fetchall()}
+        if pair[0] in prods and pair[2] in prods:
+            p1, p2 = prods[pair[0]], prods[pair[2]]
+            bundle_price = round((p1["price"] + p2["price"]) * 0.9, 2)
+            bundle = {
+                "co_purchase_count": pair[4],
+                "product1": p1,
+                "product2": p2,
+                "original_price": round(p1["price"] + p2["price"], 2),
+                "bundle_price": bundle_price,
+                "savings": round(p1["price"] + p2["price"] - bundle_price, 2)
+            }
+
+    # 4. Category highlights with counts
+    cursor.execute("""
+        SELECT cat.category_id, cat.category_name, cat.description, COUNT(p.product_id) as product_count
+        FROM categories cat
+        LEFT JOIN products p ON cat.category_id = p.category_id
+        GROUP BY cat.category_id, cat.category_name
+        ORDER BY product_count DESC;
+    """)
+    categories = [{
+        "category_id": r[0],
+        "category_name": r[1],
+        "description": r[2],
+        "product_count": r[3]
+    } for r in cursor.fetchall()]
+
+    conn.close()
+
+    return jsonify({
+        "status": "success",
+        "sections": {
+            "featured": featured,
+            "top_rated": top_rated,
+            "bundle": bundle,
+            "categories": categories
+        }
+    })
+
+
 @app.route("/api/checkout", methods=["POST"])
 def execute_checkout():
     data = request.json or {}

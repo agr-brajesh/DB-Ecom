@@ -1897,11 +1897,15 @@ input, select, textarea {
     background: rgba(0, 0, 0, 0.75);
     backdrop-filter: blur(8px);
     z-index: 500;
-    display: flex;
+    display: none;
     align-items: center;
     justify-content: center;
     padding: 1.5rem;
     animation: fadeIn 0.2s ease;
+}
+
+.modal-overlay.open {
+    display: flex;
 }
 
 .modal-dialog {
@@ -2767,4 +2771,119 @@ input, select, textarea {
     .form-grid, .payment-options, .checkout-btn-actions {
         grid-template-columns: 1fr;
     }
+}
+
+/* ==========================================================
+   PHASE 3: CORE E-COMMERCE ENHANCEMENTS & SEARCH TYPEAHEAD
+   ========================================================== */
+.search-suggestions-dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    right: 0;
+    background: var(--bg-surface-elevated);
+    border: 1px solid var(--border-card);
+    border-radius: var(--radius-md);
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6);
+    z-index: 1000;
+    max-height: 400px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.search-suggestion-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border-subtle);
+    transition: var(--transition);
+}
+
+.search-suggestion-item:last-child {
+    border-bottom: none;
+}
+
+.search-suggestion-item:hover, .search-suggestion-item.highlighted {
+    background: var(--bg-card-hover);
+}
+
+.suggestion-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.suggestion-title {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.suggestion-subtitle {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.suggestion-tag {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-weight: 600;
+}
+
+.suggestion-tag.product {
+    background: rgba(99, 102, 241, 0.15);
+    color: #818cf8;
+}
+
+.suggestion-tag.category {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+}
+
+/* Stock status pills */
+.stock-status-pill.out-of-stock {
+    background: rgba(244, 63, 94, 0.15);
+    color: #fb7185;
+}
+
+/* Modal Confirmation */
+.modal-confirmation-dialog {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-card);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+}
+
+/* Profile sections */
+.profile-cat-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.65rem 0.85rem;
+    background: var(--bg-input);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-subtle);
+}
+
+.search-pill-item {
+    background: rgba(99, 102, 241, 0.12);
+    color: #a5b4fc;
+    border: 1px solid rgba(99, 102, 241, 0.25);
+    border-radius: 9999px;
+    padding: 0.35rem 0.75rem;
+    font-size: 0.8rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.search-pill-item:hover {
+    background: rgba(99, 102, 241, 0.22);
+    border-color: #818cf8;
 }

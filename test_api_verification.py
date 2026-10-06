@@ -176,7 +176,73 @@ def test_api_suite():
     assert "category_sales" in data["overview"]
     print(f"[PASS] GET /api/admin/overview (Gross Revenue: ${data['overview']['gross_revenue']:.2f}, Orders: {data['overview']['total_orders']})")
 
+    # 14. POST /api/cart/update (Stock Validation & Quantity ceiling)
+    # Add P101 (UltraBook Pro) to cart first
+    client.post("/api/cart/add", json={"customer_id": "C101", "product_id": "P101", "quantity": 1})
+    # Update to valid quantity 3
+    res = client.post("/api/cart/update", json={"customer_id": "C101", "product_id": "P101", "quantity": 3})
+    assert res.status_code == 200
+    data = res.get_json()
+    assert data["status"] == "success"
+    assert data["quantity"] == 3
+    # Try updating to quantity exceeding stock (e.g. 9999)
+    res_stock = client.post("/api/cart/update", json={"customer_id": "C101", "product_id": "P101", "quantity": 9999})
+    assert res_stock.status_code == 400
+    assert "exceeds available stock" in res_stock.get_json()["message"]
+    # Clean up cart item
+    client.post("/api/cart/remove", json={"customer_id": "C101", "product_id": "P101"})
+    print("[PASS] POST /api/cart/update (Quantity update and stock ceiling validation verified)")
+
+    # 15. Wishlist: POST /api/wishlist/toggle & GET /api/wishlist/<customer_id>
+    # Add P102 to wishlist
+    res_add = client.post("/api/wishlist/toggle", json={"customer_id": "C101", "product_id": "P102"})
+    assert res_add.status_code == 200
+    assert res_add.get_json()["action"] == "added"
+    assert res_add.get_json()["in_wishlist"] is True
+    # Verify in GET /api/wishlist/C101
+    res_get = client.get("/api/wishlist/C101")
+    assert res_get.status_code == 200
+    assert any(item["product_id"] == "P102" for item in res_get.get_json()["wishlist"])
+    # Toggle again to remove
+    res_rem = client.post("/api/wishlist/toggle", json={"customer_id": "C101", "product_id": "P102"})
+    assert res_rem.status_code == 200
+    assert res_rem.get_json()["action"] == "removed"
+    assert res_rem.get_json()["in_wishlist"] is False
+    print("[PASS] Wishlist Toggle & Persistence (Add, Retrieve, Remove verified)")
+
+    # 16. Search Suggestions & Record: GET /api/search/suggestions & POST /api/search/record
+    res_sug = client.get("/api/search/suggestions?q=Lap")
+    assert res_sug.status_code == 200
+    sug_data = res_sug.get_json()
+    assert sug_data["status"] == "success"
+    assert len(sug_data["suggestions"]) > 0
+    # Record search query
+    res_rec = client.post("/api/search/record", json={"customer_id": "C101", "query": "Gaming Laptop"})
+    assert res_rec.status_code == 200
+    print(f"[PASS] Search suggestions (Returned {len(sug_data['suggestions'])}) and search recording")
+
+    # 17. GET /api/profile/<customer_id>
+    res_prof = client.get("/api/profile/C101")
+    assert res_prof.status_code == 200
+    prof = res_prof.get_json()["profile"]
+    assert prof["customer_id"] == "C101"
+    assert "total_orders" in prof
+    assert "lifetime_spend" in prof
+    assert "top_categories" in prof
+    assert "recent_orders" in prof
+    print(f"[PASS] GET /api/profile/C101 (Profile with {prof['total_orders']} orders, ${prof['lifetime_spend']} spend)")
+
+    # 18. GET /api/home/sections
+    res_home = client.get("/api/home/sections")
+    assert res_home.status_code == 200
+    sec = res_home.get_json()["sections"]
+    assert "featured" in sec and len(sec["featured"]) > 0
+    assert "top_rated" in sec and len(sec["top_rated"]) > 0
+    assert "categories" in sec and len(sec["categories"]) > 0
+    print(f"[PASS] GET /api/home/sections (Featured: {len(sec['featured'])}, Top Rated: {len(sec['top_rated'])}, Categories: {len(sec['categories'])})")
+
     print("\n=== ALL API ENDPOINTS, NEW COMMERCE ROUTES, AND SECURITY TESTS VERIFIED SUCCESSFULLY ===")
 
 if __name__ == "__main__":
     test_api_suite()
+

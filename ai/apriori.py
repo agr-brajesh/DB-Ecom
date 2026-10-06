@@ -165,6 +165,41 @@ class AprioriMiner:
         self.association_rules.sort(key=lambda r: (r["lift"], r["confidence"]), reverse=True)
         return self.association_rules
 
+    def compute_affinity(self, confidence: float, lift: float) -> float:
+        """
+        Phase 4: Computes a normalized Apriori affinity score strictly in the range [0.0, 1.0].
+        Combines rule confidence (probability) and logarithmic lift (association strength).
+        """
+        import math
+        max_lift = max((r["lift"] for r in self.association_rules), default=25.0) or 25.0
+        lift_factor = math.log1p(max(0.0, lift)) / math.log1p(max_lift)
+        affinity = (0.60 * min(1.0, max(0.0, confidence))) + (0.40 * min(1.0, max(0.0, lift_factor)))
+        return round(max(0.0, min(1.0, affinity)), 4)
+
+    def get_strongest_rules_for_candidates(self, known_pids: Set[str]) -> Dict[str, Dict]:
+        """
+        Phase 4: Finds all applicable rules where antecedent is a subset of known_pids.
+        When multiple rules recommend the same consequent product, selects the strongest rule.
+        """
+        best_candidates: Dict[str, Dict] = {}
+        for rule in self.association_rules:
+            ant = set(rule["antecedent"])
+            if ant and ant.issubset(known_pids):
+                affinity = self.compute_affinity(rule["confidence"], rule["lift"])
+                for con_pid in rule["consequent"]:
+                    if con_pid not in best_candidates or affinity > best_candidates[con_pid]["affinity_score"]:
+                        best_candidates[con_pid] = {
+                            "product_id": con_pid,
+                            "affinity_score": affinity,
+                            "confidence": rule["confidence"],
+                            "lift": rule["lift"],
+                            "support": rule["support"],
+                            "antecedent": rule["antecedent"],
+                            "antecedent_names": rule["antecedent_names"],
+                            "rule_string": rule["rule_string"]
+                        }
+        return best_candidates
+
 
 def test_apriori():
     miner = AprioriMiner()

@@ -24,8 +24,9 @@ let activeInStockOnly = false;
 let activeRatingMin = 0;
 let activeSort = "featured";
 
-// Wishlist stored per customer in localStorage
+// Phase 3: Database-backed Wishlist and Search Debounce
 let currentWishlist = new Set();
+let searchDebounceTimer = null;
 
 // ==========================================================
 // DOM ELEMENT CACHE
@@ -41,6 +42,7 @@ const adminPortalContainer = document.getElementById("adminPortalContainer");
 // Nav elements
 const globalSearchInput = document.getElementById("globalSearchInput");
 const clearSearchBtn = document.getElementById("clearSearchBtn");
+const searchSuggestionsBox = document.getElementById("searchSuggestionsBox");
 const headerCategorySelect = document.getElementById("headerCategorySelect");
 const headerSearchBtn = document.getElementById("headerSearchBtn");
 const wishlistCountBadge = document.getElementById("wishlistCountBadge");
@@ -58,21 +60,27 @@ const closeCartBtn = document.getElementById("closeCartBtn");
 const drawerCartItems = document.getElementById("drawerCartItems");
 const drawerSubtotal = document.getElementById("drawerSubtotal");
 
-// Product Modal
+// Modals
 const productDetailModal = document.getElementById("productDetailModal");
 const productDetailContent = document.getElementById("productDetailContent");
 const closeProductDetailBtn = document.getElementById("closeProductDetailBtn");
+const orderConfirmationModal = document.getElementById("orderConfirmationModal");
 
 // ==========================================================
 // 1. INITIALIZATION & ROUTING
 // ==========================================================
-document.addEventListener("DOMContentLoaded", initApp);
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initApp);
+} else {
+    initApp();
+}
 
 async function initApp() {
     setupGlobalEventListeners();
-    loadWishlistFromStorage();
+    await loadWishlistFromDb(activeCustomerId);
     await loadCustomers();
     await loadCatalog();
+    await loadHomeDynamicSections();
     await loadRecommendations(activeCustomerId);
     await loadCart(activeCustomerId);
     
@@ -86,74 +94,119 @@ async function initApp() {
 }
 
 function setupGlobalEventListeners() {
-    // Customer / Persona Switcher
-    customerSelect.addEventListener("change", async (e) => {
-        activeCustomerId = e.target.value;
-        const cust = allCustomers.find(c => c.customer_id === activeCustomerId);
-        if (cust) {
-            updateCustomerIdentityUI(cust);
-        }
-        loadWishlistFromStorage();
-        await loadRecommendations(activeCustomerId);
-        await loadCart(activeCustomerId);
-        if (currentView === "orders") {
-            await loadCustomerOrders(activeCustomerId);
-        } else if (currentView === "profile") {
-            renderProfileView(cust);
-        } else if (currentView === "wishlist") {
-            renderWishlistView();
-        }
-        showToast(`Switched active persona to ${cust ? cust.name : activeCustomerId}`, "success");
+    // Direct click listeners on all navigation links and elements with data-nav
+    document.querySelectorAll("[data-nav]").forEach(btn => {
+        btn.addEventListener("click", (e) => {
+            const nav = btn.getAttribute("data-nav");
+            if (nav) {
+                e.preventDefault();
+                navigateTo(nav);
+            }
+        });
     });
+
+    // Customer / Persona Switcher
+    if (customerSelect) {
+        customerSelect.addEventListener("change", async (e) => {
+            activeCustomerId = e.target.value;
+            const cust = allCustomers.find(c => c.customer_id === activeCustomerId);
+            if (cust) {
+                updateCustomerIdentityUI(cust);
+            }
+            await loadWishlistFromDb(activeCustomerId);
+            await loadRecommendations(activeCustomerId);
+            await loadCart(activeCustomerId);
+            if (currentView === "orders") {
+                await loadCustomerOrders(activeCustomerId);
+            } else if (currentView === "profile") {
+                await renderProfileView(cust);
+            } else if (currentView === "wishlist") {
+                await renderWishlistView();
+            }
+            showToast(`Switched active persona to ${cust ? cust.name : activeCustomerId}`, "success");
+        });
+    }
 
     // Account Dropdown Toggle
-    accountMenuBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        accountDropdown.classList.toggle("show");
-    });
+    if (accountMenuBtn && accountDropdown) {
+        accountMenuBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            accountDropdown.classList.toggle("show");
+        });
 
-    document.addEventListener("click", (e) => {
-        if (!accountDropdown.contains(e.target) && !accountMenuBtn.contains(e.target)) {
-            accountDropdown.classList.remove("show");
-        }
-    });
+        document.addEventListener("click", (e) => {
+            if (!accountDropdown.contains(e.target) && !accountMenuBtn.contains(e.target)) {
+                accountDropdown.classList.remove("show");
+            }
+            // Click outside search bar hides suggestions
+            if (!e.target.closest(".nav-search-bar")) {
+                hideSearchSuggestions();
+            }
+        });
+    }
 
-    // Global Search Bar
-    headerSearchBtn.addEventListener("click", executeHeaderSearch);
-    globalSearchInput.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") executeHeaderSearch();
-    });
-    globalSearchInput.addEventListener("input", (e) => {
-        clearSearchBtn.style.display = e.target.value.trim() ? "block" : "none";
-    });
-    clearSearchBtn.addEventListener("click", () => {
-        globalSearchInput.value = "";
-        clearSearchBtn.style.display = "none";
-        activeSearchQuery = "";
-        filterAndRenderShopCatalog();
+    // Global Live Search Bar
+    if (headerSearchBtn) headerSearchBtn.addEventListener("click", executeHeaderSearch);
+    if (globalSearchInput) {
+        globalSearchInput.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") executeHeaderSearch();
+            else if (e.key === "Escape") hideSearchSuggestions();
+        });
+        globalSearchInput.addEventListener("input", (e) => {
+            const val = e.target.value.trim();
+            if (clearSearchBtn) clearSearchBtn.style.display = val ? "block" : "none";
+            clearTimeout(searchDebounceTimer);
+            if (val.length < 2) {
+                hideSearchSuggestions();
+                return;
+            }
+            searchDebounceTimer = setTimeout(() => {
+                fetchSearchSuggestions(val);
+            }, 220);
+        });
+    }
+    if (clearSearchBtn) {
+        clearSearchBtn.addEventListener("click", () => {
+            if (globalSearchInput) globalSearchInput.value = "";
+            clearSearchBtn.style.display = "none";
+            hideSearchSuggestions();
+            activeSearchQuery = "";
+            filterAndRenderShopCatalog();
+        });
+    }
+
+    // Payment method radio change in checkout
+    document.querySelectorAll("input[name='checkoutPaymentMethod']").forEach(radio => {
+        radio.addEventListener("change", updateCheckoutPaymentMethodLabel);
     });
 
     // Cart Drawer Controls
-    cartToggleBtn.addEventListener("click", openCartDrawer);
-    closeCartBtn.addEventListener("click", closeCartDrawer);
-    cartDrawerOverlay.addEventListener("click", (e) => {
-        if (e.target === cartDrawerOverlay) closeCartDrawer();
-    });
+    if (cartToggleBtn) cartToggleBtn.addEventListener("click", openCartDrawer);
+    if (closeCartBtn) closeCartBtn.addEventListener("click", closeCartDrawer);
+    if (cartDrawerOverlay) {
+        cartDrawerOverlay.addEventListener("click", (e) => {
+            if (e.target === cartDrawerOverlay) closeCartDrawer();
+        });
+    }
 
     // Product Modal Close
-    closeProductDetailBtn.addEventListener("click", closeProductModal);
-    productDetailModal.addEventListener("click", (e) => {
-        if (e.target === productDetailModal) closeProductModal();
-    });
+    if (closeProductDetailBtn) closeProductDetailBtn.addEventListener("click", closeProductModal);
+    if (productDetailModal) {
+        productDetailModal.addEventListener("click", (e) => {
+            if (e.target === productDetailModal) closeProductModal();
+        });
+    }
 
     // Admin Portal Toggle Button
-    togglePortalModeBtn.addEventListener("click", () => {
-        if (adminMode) {
-            closeAdminPortal();
-        } else {
-            openAdminPortal("dashboard");
-        }
-    });
+    if (togglePortalModeBtn) {
+        togglePortalModeBtn.addEventListener("click", () => {
+            if (adminMode) {
+                closeAdminPortal();
+            } else {
+                openAdminPortal("dashboard");
+            }
+        });
+    }
 
     // Refresh recommendations button on home
     const refreshHomeRecsBtn = document.getElementById("refreshHomeRecsBtn");
@@ -172,6 +225,9 @@ function setupGlobalEventListeners() {
 }
 
 function navigateTo(viewName) {
+    if (adminMode) {
+        closeAdminPortal();
+    }
     currentView = viewName;
     window.location.hash = viewName;
 
@@ -208,6 +264,29 @@ function navigateTo(viewName) {
         renderProfileView(cust);
     }
 }
+
+// Global window bindings to guarantee accessibility for inline onclick handlers
+window.navigateTo = navigateTo;
+window.openProductModal = openProductModal;
+window.closeProductModal = closeProductModal;
+window.filterByCategory = filterByCategory;
+window.toggleWishlist = toggleWishlist;
+window.addProductToCart = addProductToCart;
+window.openCartDrawer = openCartDrawer;
+window.closeCartDrawer = closeCartDrawer;
+window.openAdminPortal = openAdminPortal;
+window.closeAdminPortal = closeAdminPortal;
+window.switchAdminTab = switchAdminTab;
+window.executeHeaderSearch = executeHeaderSearch;
+window.filterAndRenderShopCatalog = filterAndRenderShopCatalog;
+window.resetShopFilters = resetShopFilters;
+window.executeCustomerOrder = executeCustomerOrder;
+window.closeConfirmationModal = closeConfirmationModal;
+window.runAdminAcidSimulation = runAdminAcidSimulation;
+window.adjustModalQty = adjustModalQty;
+window.updateItemQuantity = updateItemQuantity;
+window.removeFromCart = removeFromCart;
+window.moveWishlistToCart = moveWishlistToCart;
 
 // ==========================================================
 // 2. CUSTOMER PROFILES & IDENTITY
@@ -311,11 +390,14 @@ async function loadCatalog() {
             headerCategorySelect.innerHTML = `<option value="">All Categories (${allProducts.length})</option>` + 
                 allCategories.map(c => `<option value="${c.category_id}">${c.category_name}</option>`).join("");
 
-            // Render Home Categories Grid
+            // Render Home Categories Grid (Initial)
             renderHomeCategories();
 
-            // Render Home Trending Products (Top Rated from catalog)
+            // Render Home Trending Products (Initial fallback)
             renderHomeTrending();
+
+            // Load Dynamic Homepage Sections backed by SQLite views
+            await loadHomeDynamicSections();
 
             // Render Shop Category Sidebar
             renderShopCategoryFilters();
@@ -328,6 +410,65 @@ async function loadCatalog() {
         }
     } catch (err) {
         console.error("Failed to load catalog:", err);
+    }
+}
+
+async function loadHomeDynamicSections() {
+    try {
+        const res = await fetch(`${API_BASE}/api/home/sections`);
+        const json = await res.json();
+        if (json.status === "success") {
+            const sec = json.sections;
+
+            // Popular / Best-sellers from v_product_performance
+            const trendGrid = document.getElementById("homeTrendingGrid");
+            if (trendGrid && sec.featured && sec.featured.length > 0) {
+                trendGrid.innerHTML = sec.featured.map(prod => createProductCardHtml(prod)).join("");
+            }
+
+            // Category counts from SQLite
+            if (sec.categories && sec.categories.length > 0) {
+                const homeCatGrid = document.getElementById("homeCategoriesGrid");
+                if (homeCatGrid) {
+                    homeCatGrid.innerHTML = sec.categories.map(cat => {
+                        const iconSvg = getCategoryIconSvg(cat.category_id);
+                        return `
+                            <div class="category-card" onclick="filterShopByCategory('${cat.category_id}')">
+                                <div>
+                                    <div class="cat-icon-wrap">${iconSvg}</div>
+                                    <h3>${cat.category_name}</h3>
+                                    <p>${cat.description}</p>
+                                </div>
+                                <div class="cat-footer">
+                                    <span>${cat.product_count} Products</span>
+                                    <span class="link-btn">Explore &rarr;</span>
+                                </div>
+                            </div>
+                        `;
+                    }).join("");
+                }
+            }
+
+            // Frequent product pair / bundle from v_frequent_product_pairs
+            if (sec.bundle) {
+                const b = sec.bundle;
+                const fbtHeadline = document.getElementById("fbtHeadline");
+                const fbtExpl = document.getElementById("fbtExplanation");
+                const bundlePriceEl = document.querySelector(".fbt-bundle-price");
+                const savingEl = document.querySelector(".fbt-saving-tag");
+                const ctaBtn = document.querySelector(".fbt-cta button");
+
+                if (fbtHeadline) fbtHeadline.innerText = `Frequent Co-Purchase Pair: ${b.product1.name} + ${b.product2.name}`;
+                if (fbtExpl) fbtExpl.innerHTML = `Identified by SQL analytical view <code>v_frequent_product_pairs</code> (${b.co_purchase_count} co-purchase orders recorded in database). Buy both together and save 10%!`;
+                if (bundlePriceEl) bundlePriceEl.innerText = formatMoney(b.bundle_price);
+                if (savingEl) savingEl.innerText = `Save ${formatMoney(b.savings)} (Regular: ${formatMoney(b.original_price)})`;
+                if (ctaBtn) {
+                    ctaBtn.onclick = () => quickAddBundle([b.product1.id, b.product2.id]);
+                }
+            }
+        }
+    } catch (err) {
+        console.error("Error loading dynamic home sections:", err);
     }
 }
 
@@ -481,11 +622,67 @@ function filterShopByCategory(catId) {
     filterAndRenderShopCatalog();
 }
 
+async function recordSearch(query) {
+    if (!query || query.length < 2) return;
+    try {
+        await fetch(`${API_BASE}/api/search/record`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                customer_id: activeCustomerId,
+                query: query
+            })
+        });
+    } catch (e) {}
+}
+
+async function fetchSearchSuggestions(term) {
+    if (!searchSuggestionsBox) return;
+    try {
+        const res = await fetch(`${API_BASE}/api/search/suggestions?q=${encodeURIComponent(term)}`);
+        const json = await res.json();
+        if (json.status === "success" && json.suggestions && json.suggestions.length > 0) {
+            searchSuggestionsBox.innerHTML = json.suggestions.map(s => `
+                <div class="search-suggestion-item" onclick="selectSearchSuggestion('${s.type}', '${s.id}', '${escapeHtml(s.title)}')">
+                    <div class="suggestion-info">
+                        <span class="suggestion-title">${escapeHtml(s.title)}</span>
+                        <span class="suggestion-subtitle">${escapeHtml(s.subtitle)}</span>
+                    </div>
+                    <span class="suggestion-tag ${s.type}">${s.type.toUpperCase()}</span>
+                </div>
+            `).join("");
+            searchSuggestionsBox.style.display = "flex";
+        } else {
+            hideSearchSuggestions();
+        }
+    } catch (e) {
+        hideSearchSuggestions();
+    }
+}
+
+function hideSearchSuggestions() {
+    if (searchSuggestionsBox) searchSuggestionsBox.style.display = "none";
+}
+
+function selectSearchSuggestion(type, id, title) {
+    hideSearchSuggestions();
+    recordSearch(title);
+    if (type === "category") {
+        filterShopByCategory(id);
+    } else {
+        openProductModal(id);
+    }
+}
+
 function executeHeaderSearch() {
     const query = globalSearchInput.value.trim();
     const cat = headerCategorySelect.value;
     activeSearchQuery = query.toLowerCase();
     activeCategoryFilter = cat;
+    if (query) {
+        recordSearch(query);
+    }
+    hideSearchSuggestions();
     renderShopCategoryFilters();
     navigateTo("shop");
     filterAndRenderShopCatalog();
@@ -520,6 +717,8 @@ function filterAndRenderShopCatalog() {
         filtered.sort((a, b) => (b.avg_rating || 0) - (a.avg_rating || 0));
     } else if (activeSort === "name") {
         filtered.sort((a, b) => a.product_name.localeCompare(b.product_name));
+    } else if (activeSort === "popularity") {
+        filtered.sort((a, b) => (b.review_count || 0) - (a.review_count || 0));
     }
 
     // Active filter badge
@@ -553,9 +752,14 @@ function filterAndRenderShopCatalog() {
 
 function createProductCardHtml(prod, aiMeta = null) {
     const isWishlisted = currentWishlist.has(prod.product_id);
-    const stockStatus = prod.stock_quantity < 50 ? 
-        `<span class="stock-status-pill low-stock">Only ${prod.stock_quantity} left</span>` : 
-        `<span class="stock-status-pill in-stock">In Stock</span>`;
+    let stockStatus = "";
+    if (prod.stock_quantity <= 0) {
+        stockStatus = `<span class="stock-status-pill out-of-stock">Out of Stock</span>`;
+    } else if (prod.stock_quantity < 50) {
+        stockStatus = `<span class="stock-status-pill low-stock">Only ${prod.stock_quantity} left</span>`;
+    } else {
+        stockStatus = `<span class="stock-status-pill in-stock">In Stock (${prod.stock_quantity})</span>`;
+    }
 
     let aiReasonHtml = "";
     if (aiMeta) {
@@ -807,8 +1011,13 @@ function renderProductModalDetails(prod) {
 function adjustModalQty(delta) {
     const input = document.getElementById("modalQtyInput");
     if (!input) return;
+    const max = parseInt(input.getAttribute("max") || "9999");
     let val = parseInt(input.value) + delta;
     if (val < 1) val = 1;
+    if (val > max) {
+        val = max;
+        showToast(`Only ${max} units available in stock for this item.`, "error");
+    }
     input.value = val;
 }
 
@@ -1017,9 +1226,27 @@ function renderFullCartPageContent(cartData) {
 async function updateItemQuantity(productId, newQty) {
     if (newQty <= 0) {
         await removeProductFromCart(productId);
-    } else {
-        await addProductToCart(productId, newQty - 1, null, false);
-        await loadCart(activeCustomerId);
+        return;
+    }
+
+    try {
+        const res = await fetch(`${API_BASE}/api/cart/update`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                customer_id: activeCustomerId,
+                product_id: productId,
+                quantity: newQty
+            })
+        });
+        const json = await res.json();
+        if (json.status === "success") {
+            await loadCart(activeCustomerId);
+        } else {
+            showToast(json.message || "Failed to update item quantity.", "error");
+        }
+    } catch (err) {
+        showToast("Error updating cart quantity.", "error");
     }
 }
 
@@ -1032,26 +1259,44 @@ async function renderCheckoutPage() {
         document.getElementById("checkoutCustName").value = cust.name;
         document.getElementById("checkoutCustEmail").value = cust.email;
         document.getElementById("checkoutCustCity").value = `${cust.city}, United States`;
+        const reviewShippingTo = document.getElementById("reviewShippingTo");
+        if (reviewShippingTo) {
+            reviewShippingTo.innerText = `${cust.name} (${cust.city})`;
+        }
     }
+    updateCheckoutPaymentMethodLabel();
     await loadCart(activeCustomerId);
+}
+
+function updateCheckoutPaymentMethodLabel() {
+    const selected = document.querySelector("input[name='checkoutPaymentMethod']:checked");
+    const labelEl = document.getElementById("reviewPaymentMethodLabel");
+    if (selected && labelEl) {
+        const labels = {
+            "CREDIT_CARD": "Credit / Debit Card",
+            "UPI": "Instant UPI / QR",
+            "NET_BANKING": "Net Banking",
+            "CASH_ON_DELIVERY": "Cash on Delivery (COD)"
+        };
+        labelEl.innerText = labels[selected.value] || selected.value;
+    }
 }
 
 function renderCheckoutSummaryContent(cartData) {
     const list = document.getElementById("checkoutItemsList");
     const subtotal = document.getElementById("checkoutSubtotal");
     const total = document.getElementById("checkoutTotal");
+    const placeOrderBtn = document.getElementById("checkoutCommitBtn");
 
     if (!list) return;
 
     if (!cartData.items || cartData.items.length === 0) {
         list.innerHTML = `<p style="color:var(--text-muted); text-align:center; padding:1.5rem;">Cart is empty. <a href="javascript:void(0)" onclick="navigateTo('shop')" style="color:var(--primary);">Add items</a></p>`;
-        document.getElementById("checkoutCommitBtn").disabled = true;
-        document.getElementById("checkoutRollbackBtn").disabled = true;
+        if (placeOrderBtn) placeOrderBtn.disabled = true;
         return;
     }
 
-    document.getElementById("checkoutCommitBtn").disabled = false;
-    document.getElementById("checkoutRollbackBtn").disabled = false;
+    if (placeOrderBtn) placeOrderBtn.disabled = false;
 
     list.innerHTML = cartData.items.map(item => `
         <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:0.5rem;">
@@ -1064,15 +1309,9 @@ function renderCheckoutSummaryContent(cartData) {
     total.innerText = formatMoney(cartData.total_amount);
 }
 
-async function executeCheckoutFlow(simulateFail = false) {
-    const auditLog = document.getElementById("checkoutAuditLog");
-    const auditConsole = document.getElementById("checkoutLogConsole");
-    const statusPill = document.getElementById("auditStatusPill");
-
-    auditLog.style.display = "block";
-    statusPill.innerText = "Executing Transaction";
-    statusPill.className = "audit-status";
-    auditConsole.innerText = `[1] BEGIN TRANSACTION;\n[*] Customer: ${activeCustomerId}\n[*] Verifying inventory triggers and stock constraints...`;
+async function executeCustomerOrder() {
+    const placeBtn = document.getElementById("checkoutCommitBtn");
+    if (placeBtn) placeBtn.disabled = true;
 
     const paymentMethod = document.querySelector("input[name='checkoutPaymentMethod']:checked")?.value || "CREDIT_CARD";
 
@@ -1083,47 +1322,42 @@ async function executeCheckoutFlow(simulateFail = false) {
             body: JSON.stringify({
                 customer_id: activeCustomerId,
                 payment_method: paymentMethod,
-                simulate_fail: simulateFail
+                simulate_fail: false
             })
         });
 
         const json = await res.json();
         if (json.status === "success") {
-            statusPill.innerText = "COMMITTED";
-            statusPill.className = "audit-status success";
-            auditConsole.innerText = 
-`[1] BEGIN TRANSACTION;
-[2] Validated stock availability for all cart items.
-[3] INSERT INTO orders (order_id: ${json.result.order_id}, amount: $${json.result.amount})
-[4] INSERT INTO order_items (Trigger trg_decrement_product_stock fired)
-[5] INSERT INTO payments (Method: ${paymentMethod}, Status: SUCCESS)
-[6] DELETE FROM shopping_cart (Active cart cleared)
-[7] [COMMIT] Transaction successfully committed! Inventory and orders persisted.`;
-
-            showToast("Order placed successfully! ACID Transaction committed.", "success");
+            const resData = json.result;
+            showOrderConfirmation(resData.order_id, resData.amount, paymentMethod);
             await loadCart(activeCustomerId);
             await loadRecommendations(activeCustomerId);
-            
-            setTimeout(() => {
-                navigateTo("orders");
-            }, 2500);
         } else {
-            statusPill.innerText = "ROLLED BACK";
-            statusPill.className = "audit-status error";
-            auditConsole.innerText = 
-`[1] BEGIN TRANSACTION;
-[2] Order header and items queued.
-[!] ${json.result ? json.result.error : json.message}
-[!] [ROLLBACK] Transaction rolled back completely!
-[✓] Product inventory stock was restored to original values.
-[✓] Shopping cart preserved without data loss. Partial writes aborted.`;
-
-            showToast("Transaction rolled back! Stock and cart preserved.", "error");
+            showToast(json.result?.error || json.message || "Order placement failed.", "error");
         }
     } catch (err) {
-        statusPill.innerText = "ERROR";
-        auditConsole.innerText += "\n[!] Network or server communication error.";
-        showToast("Error processing checkout transaction.", "error");
+        showToast("Error executing order transaction.", "error");
+    } finally {
+        if (placeBtn) placeBtn.disabled = false;
+    }
+}
+
+function showOrderConfirmation(orderId, amount, paymentMethod) {
+    const idEl = document.getElementById("confOrderId");
+    const amtEl = document.getElementById("confTotalAmount");
+    const pmEl = document.getElementById("confPaymentMethod");
+    if (idEl) idEl.innerText = orderId;
+    if (amtEl) amtEl.innerText = formatMoney(amount);
+    if (pmEl) pmEl.innerText = paymentMethod;
+
+    if (orderConfirmationModal) {
+        orderConfirmationModal.style.display = "flex";
+    }
+}
+
+function closeConfirmationModal() {
+    if (orderConfirmationModal) {
+        orderConfirmationModal.style.display = "none";
     }
 }
 
@@ -1203,106 +1437,243 @@ async function loadCustomerOrders(customerId) {
 }
 
 // ==========================================================
-// 9. WISHLIST MANAGEMENT (CLIENT-SIDE PERSISTENCE)
+// 9. WISHLIST MANAGEMENT (DATABASE PERSISTENT)
 // ==========================================================
-function loadWishlistFromStorage() {
+async function loadWishlistFromDb(customerId) {
     try {
-        const stored = localStorage.getItem(`nexus_wishlist_${activeCustomerId}`);
-        if (stored) {
-            currentWishlist = new Set(JSON.parse(stored));
-        } else {
-            currentWishlist = new Set();
+        const res = await fetch(`${API_BASE}/api/wishlist/${customerId}`);
+        const json = await res.json();
+        if (json.status === "success") {
+            currentWishlist = new Set(json.wishlist.map(w => w.product_id));
+            updateWishlistBadge();
         }
-    } catch (e) {
-        currentWishlist = new Set();
+    } catch (err) {
+        console.error("Error loading wishlist from database:", err);
     }
-    updateWishlistBadge();
-}
-
-function saveWishlistToStorage() {
-    try {
-        localStorage.setItem(`nexus_wishlist_${activeCustomerId}`, JSON.stringify(Array.from(currentWishlist)));
-    } catch (e) {}
-    updateWishlistBadge();
 }
 
 function updateWishlistBadge() {
     if (wishlistCountBadge) {
         wishlistCountBadge.innerText = currentWishlist.size;
     }
+    const profileWishlistCount = document.getElementById("profileWishlistCount");
+    if (profileWishlistCount) {
+        profileWishlistCount.innerText = currentWishlist.size;
+    }
 }
 
-function toggleWishlist(productId, event = null) {
+async function toggleWishlist(productId, event = null) {
     if (event) event.stopPropagation();
 
-    const prod = allProducts.find(p => p.product_id === productId);
-    const name = prod ? prod.product_name : "Product";
+    try {
+        const res = await fetch(`${API_BASE}/api/wishlist/toggle`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                customer_id: activeCustomerId,
+                product_id: productId
+            })
+        });
+        const json = await res.json();
+        if (json.status === "success") {
+            if (json.in_wishlist) {
+                currentWishlist.add(productId);
+            } else {
+                currentWishlist.delete(productId);
+            }
+            updateWishlistBadge();
+            showToast(json.message, "success");
 
-    if (currentWishlist.has(productId)) {
-        currentWishlist.delete(productId);
-        showToast(`Removed ${name} from your wishlist.`, "success");
-    } else {
-        currentWishlist.add(productId);
-        showToast(`Saved ${name} to your wishlist!`, "success");
-    }
+            // Update heart icon states across active cards
+            document.querySelectorAll(`.wishlist-toggle-btn[onclick*="${productId}"]`).forEach(btn => {
+                btn.classList.toggle("active", json.in_wishlist);
+                btn.title = json.in_wishlist ? "Remove from Wishlist" : "Save to Wishlist";
+            });
 
-    saveWishlistToStorage();
+            // Update heart icon in product detail modal if open
+            const detailWishlistBtn = document.querySelector(`.detail-btn-wishlist[onclick*="${productId}"]`);
+            if (detailWishlistBtn) {
+                detailWishlistBtn.classList.toggle("active", json.in_wishlist);
+                detailWishlistBtn.innerHTML = json.in_wishlist ? 
+                    `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg> Saved in Wishlist` :
+                    `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg> Add to Wishlist`;
+            }
 
-    // Re-render card toggles if visible
-    document.querySelectorAll(`.wishlist-toggle-btn[onclick*="${productId}"]`).forEach(btn => {
-        btn.classList.toggle("active", currentWishlist.has(productId));
-    });
-
-    if (currentView === "wishlist") {
-        renderWishlistView();
+            if (currentView === "wishlist") {
+                await renderWishlistView();
+            }
+        }
+    } catch (err) {
+        showToast("Error updating database wishlist.", "error");
     }
 }
 
-function clearWishlist() {
-    currentWishlist.clear();
-    saveWishlistToStorage();
-    renderWishlistView();
+async function clearWishlist() {
+    for (const pid of Array.from(currentWishlist)) {
+        await toggleWishlist(pid, null);
+    }
     showToast("Wishlist cleared.", "success");
+    await renderWishlistView();
 }
 
-function renderWishlistView() {
+async function renderWishlistView() {
     const grid = document.getElementById("wishlistCardsGrid");
     if (!grid) return;
 
-    if (currentWishlist.size === 0) {
-        grid.innerHTML = `
-            <div style="grid-column: 1 / -1; text-align: center; padding: 4rem; background: var(--bg-card); border-radius: var(--radius-lg);">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text-muted); margin-bottom:1rem; opacity:0.6;">
-                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-                </svg>
-                <h3 style="font-family:var(--font-heading); margin-bottom:0.5rem;">Your Wishlist is Empty</h3>
-                <p style="color:var(--text-secondary); margin-bottom:1.5rem;">Click the heart icon on any product to save it here for later.</p>
-                <button class="btn-primary" onclick="navigateTo('shop')">Browse Products</button>
-            </div>
-        `;
-        return;
-    }
+    grid.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); padding: 3rem;">Loading saved items from SQLite...</div>`;
 
-    const savedProducts = allProducts.filter(p => currentWishlist.has(p.product_id));
-    grid.innerHTML = savedProducts.map(p => createProductCardHtml(p)).join("");
+    try {
+        const res = await fetch(`${API_BASE}/api/wishlist/${activeCustomerId}`);
+        const json = await res.json();
+        if (json.status === "success") {
+            const items = json.wishlist;
+            currentWishlist = new Set(items.map(w => w.product_id));
+            updateWishlistBadge();
+
+            if (items.length === 0) {
+                grid.innerHTML = `
+                    <div style="grid-column: 1 / -1; text-align: center; padding: 4rem; background: var(--bg-card); border-radius: var(--radius-lg);">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text-muted); margin-bottom:1rem; opacity:0.6;">
+                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                        </svg>
+                        <h3 style="font-family:var(--font-heading); margin-bottom:0.5rem;">Your Wishlist is Empty</h3>
+                        <p style="color:var(--text-secondary); margin-bottom:1.5rem;">Items saved here are stored in the relational database 'wishlist' table.</p>
+                        <button class="btn-primary" onclick="navigateTo('shop')">Explore Shop Now</button>
+                    </div>
+                `;
+                return;
+            }
+
+            grid.innerHTML = items.map(item => `
+                <div class="product-card" id="card-${item.product_id}">
+                    <div>
+                        <div class="card-top">
+                            <span class="category-badge">${item.category_name}</span>
+                            <button class="wishlist-toggle-btn active" onclick="toggleWishlist('${item.product_id}', event)" title="Remove from Wishlist">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <span class="card-brand">${item.brand}</span>
+                        <h3 class="card-title" onclick="openProductModal('${item.product_id}')">${escapeHtml(item.product_name)}</h3>
+                        <div class="card-rating-row">
+                            <span class="stars">${renderStars(item.avg_rating || 4.5)}</span>
+                            <span>${item.avg_rating || 4.5}</span>
+                        </div>
+                        <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.35rem;">
+                            Saved on: ${item.added_at ? item.added_at.split(" ")[0] : "Recently"}
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <div>
+                            <span class="card-price">${formatMoney(item.price)}</span>
+                            <div>${item.stock_quantity > 0 ? `<span class="stock-status-pill in-stock">In Stock (${item.stock_quantity})</span>` : `<span class="stock-status-pill out-of-stock">Out of Stock</span>`}</div>
+                        </div>
+                        <button class="btn-primary" style="padding:0.4rem 0.75rem; font-size:0.8rem;" onclick="moveWishlistToCart('${item.product_id}')">
+                            Move to Cart
+                        </button>
+                    </div>
+                </div>
+            `).join("");
+        }
+    } catch (err) {
+        grid.innerHTML = `<p style="color:var(--accent-rose); text-align:center;">Failed to load wishlist.</p>`;
+    }
+}
+
+async function moveWishlistToCart(productId) {
+    await addProductToCart(productId, 1, null, false);
+    await toggleWishlist(productId, null);
+    showToast("Moved item from wishlist to your cart!", "success");
+    openCartDrawer();
 }
 
 // ==========================================================
 // 10. CUSTOMER PROFILE VIEW
 // ==========================================================
-function renderProfileView(cust) {
+async function renderProfileView(cust) {
     if (!cust) return;
     const initials = cust.name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase();
 
     document.getElementById("profileAvatarLarge").innerText = initials;
     document.getElementById("profileCustomerName").innerText = cust.name;
     document.getElementById("profileDomainPill").innerText = `${getDomainLabel(cust.customer_id)} Persona`;
-    document.getElementById("profileMetaLine").innerHTML = `Customer ID: <strong>${cust.customer_id}</strong> &bull; ${cust.city} &bull; ${cust.email}`;
 
-    document.getElementById("profileTotalOrders").innerText = cust.total_orders || 0;
-    document.getElementById("profileLifetimeSpend").innerText = formatMoney(cust.lifetime_spend || 0);
-    document.getElementById("profileCartCount").innerText = cartCountBadge.innerText || 0;
-    document.getElementById("profileWishlistCount").innerText = currentWishlist.size || 0;
+    try {
+        const res = await fetch(`${API_BASE}/api/profile/${cust.customer_id}`);
+        const json = await res.json();
+        if (json.status === "success") {
+            const p = json.profile;
+            document.getElementById("profileMetaLine").innerHTML = 
+                `Customer ID: <strong>${p.customer_id}</strong> &bull; ${p.city} &bull; ${p.email} &bull; Phone: ${p.phone} &bull; Registered: ${p.registered_at ? p.registered_at.split(" ")[0] : "Active"}`;
+
+            document.getElementById("profileTotalOrders").innerText = p.total_orders;
+            document.getElementById("profileLifetimeSpend").innerText = formatMoney(p.lifetime_spend);
+            const aovEl = document.getElementById("profileAvgOrderValue");
+            if (aovEl) aovEl.innerText = formatMoney(p.avg_order_value);
+            document.getElementById("profileWishlistCount").innerText = p.wishlist_count;
+
+            // Render Top Categories
+            const catContainer = document.getElementById("profileTopCategories");
+            if (catContainer) {
+                if (p.top_categories && p.top_categories.length > 0) {
+                    catContainer.innerHTML = p.top_categories.map(c => `
+                        <div class="profile-cat-item">
+                            <div>
+                                <strong>${escapeHtml(c.category_name)}</strong>
+                                <span style="display:block; font-size:0.75rem; color:var(--text-muted);">${c.items_count} items bought</span>
+                            </div>
+                            <span style="font-weight:700; color:#818cf8;">${formatMoney(c.total_spent)}</span>
+                        </div>
+                    `).join("");
+                } else {
+                    catContainer.innerHTML = `<p style="color:var(--text-muted); font-size:0.85rem;">No completed purchases recorded yet.</p>`;
+                }
+            }
+
+            // Render Recent Searches
+            const searchContainer = document.getElementById("profileRecentSearches");
+            if (searchContainer) {
+                if (p.recent_searches && p.recent_searches.length > 0) {
+                    searchContainer.innerHTML = p.recent_searches.map(s => `
+                        <button class="search-pill-item" onclick="applyProfileSearch('${escapeHtml(s.query)}')">
+                            <span>🔍 ${escapeHtml(s.query)}</span>
+                            <span style="font-size:0.68rem; color:var(--text-muted);">${s.searched_at ? s.searched_at.split(" ")[0] : ""}</span>
+                        </button>
+                    `).join("");
+                } else {
+                    searchContainer.innerHTML = `<p style="color:var(--text-muted); font-size:0.85rem;">No recent searches recorded.</p>`;
+                }
+            }
+
+            // Render Recent Orders Table
+            const ordersBody = document.getElementById("profileRecentOrdersBody");
+            if (ordersBody) {
+                if (p.recent_orders && p.recent_orders.length > 0) {
+                    ordersBody.innerHTML = p.recent_orders.map(o => `
+                        <tr>
+                            <td><strong>${o.order_id}</strong></td>
+                            <td>${o.order_date}</td>
+                            <td><strong>${formatMoney(o.total_amount)}</strong></td>
+                            <td>${o.payment_method}</td>
+                            <td><span class="stock-status-pill in-stock">${o.order_status}</span></td>
+                        </tr>
+                    `).join("");
+                } else {
+                    ordersBody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-muted);">No orders placed yet.</td></tr>`;
+                }
+            }
+        }
+    } catch (err) {
+        console.error("Error loading profile:", err);
+    }
+}
+
+function applyProfileSearch(query) {
+    globalSearchInput.value = query;
+    clearSearchBtn.style.display = "block";
+    executeHeaderSearch();
 }
 
 // ==========================================================
@@ -1313,6 +1684,7 @@ function openAdminPortal(tabName = "dashboard") {
     adminPortalContainer.style.display = "flex";
     portalModeBtnText.innerText = "Exit Admin Lab";
     togglePortalModeBtn.classList.add("active");
+    setupAdminSimCustomerSelect();
     switchAdminTab(tabName);
 }
 
@@ -1351,6 +1723,7 @@ function switchAdminTab(tabName) {
         loadRules();
     } else if (tabName === "dbms") {
         loadDbmsView("v_market_basket");
+        setupAdminSimCustomerSelect();
     }
 }
 
@@ -1588,6 +1961,82 @@ async function executeUserSql() {
     } catch (err) {
         errorMsg.style.display = "block";
         errorMsg.innerText = "Failed to connect to backend SQL runner.";
+    }
+}
+
+// ==========================================================
+// 11.B ACID TRANSACTION SIMULATOR (ADMIN LAB)
+// ==========================================================
+function setupAdminSimCustomerSelect() {
+    const select = document.getElementById("adminSimCustomerSelect");
+    if (!select) return;
+    select.innerHTML = allCustomers.map(c => 
+        `<option value="${c.customer_id}">${c.customer_id}: ${c.name} (${c.city})</option>`
+    ).join("");
+    select.value = activeCustomerId;
+}
+
+async function runAdminAcidSimulation() {
+    const simCustSelect = document.getElementById("adminSimCustomerSelect");
+    if (!simCustSelect) return;
+    const simCustId = simCustSelect.value;
+    const simFail = document.querySelector("input[name='adminSimFailMode']:checked")?.value === "true";
+    const auditLog = document.getElementById("adminSimAuditLog");
+    const auditConsole = document.getElementById("adminSimLogConsole");
+    const statusPill = document.getElementById("adminSimAuditStatusPill");
+    const runBtn = document.getElementById("runAdminAcidSimBtn");
+
+    if (runBtn) runBtn.disabled = true;
+    auditLog.style.display = "block";
+    statusPill.innerText = "EXECUTING";
+    statusPill.className = "audit-status";
+    auditConsole.innerText = `[1] BEGIN TRANSACTION;\n[*] Customer: ${simCustId}\n[*] Mode: ${simFail ? "SIMULATED FAILURE TEST (ROLLBACK)" : "NORMAL TRANSACTION (COMMIT)"}\n[*] Validating shopping cart entries and inventory integrity triggers...`;
+
+    try {
+        const res = await fetch(`${API_BASE}/api/checkout`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                customer_id: simCustId,
+                payment_method: "CREDIT_CARD",
+                simulate_fail: simFail
+            })
+        });
+
+        const json = await res.json();
+        if (json.status === "success") {
+            statusPill.innerText = "COMMITTED";
+            statusPill.className = "audit-status success";
+            auditConsole.innerText = 
+`[1] BEGIN TRANSACTION;
+[2] Validated stock availability for all cart items.
+[3] INSERT INTO orders (order_id: ${json.result.order_id}, amount: $${json.result.amount})
+[4] INSERT INTO order_items (Trigger trg_decrement_product_stock fired)
+[5] INSERT INTO payments (Method: CREDIT_CARD, Status: SUCCESS)
+[6] DELETE FROM shopping_cart (Cart entries cleared)
+[7] [COMMIT] Transaction successfully committed! All changes persisted in SQLite.`;
+            showToast("Simulation COMMIT succeeded! Inventory decremented.", "success");
+            await loadAdminOverview();
+            renderAdminInventory();
+        } else {
+            statusPill.innerText = "ROLLED BACK";
+            statusPill.className = "audit-status error";
+            auditConsole.innerText = 
+`[1] BEGIN TRANSACTION;
+[2] Order header and items staged.
+[!] ${json.result?.error || json.message}
+[!] [ROLLBACK] Transaction rolled back completely!
+[✓] Trigger modifications undone: Product inventory stock was restored.
+[✓] Shopping cart preserved without data corruption. Partial writes aborted.`;
+            showToast("Simulation ROLLBACK verified: Database integrity preserved.", "error");
+            renderAdminInventory();
+        }
+    } catch (err) {
+        statusPill.innerText = "ERROR";
+        statusPill.className = "audit-status error";
+        auditConsole.innerText += "\n[!] Execution failed due to communication error.";
+    } finally {
+        if (runBtn) runBtn.disabled = false;
     }
 }
 

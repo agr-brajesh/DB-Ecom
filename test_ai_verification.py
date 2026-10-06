@@ -5,6 +5,8 @@ import sqlite3
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "database", "ecommerce.db")
 
+from ai.utils import CatalogMetadata, tokenize, cosine_similarity, min_max_scale
+from ai.ranking import MultiSignalRanker, DEFAULT_WEIGHTS
 from ai.apriori import AprioriMiner
 from ai.content_based import ContentBasedRecommender
 from ai.recommender import ProductRecommender
@@ -33,10 +35,12 @@ def test_apriori_math():
         assert r["confidence"] >= 0.5
         assert r["lift"] >= 1.2
         assert r["support"] > 0
-        # verify lift formula: lift = confidence / P(consequent)
-        # lift should be positive
         assert r["lift"] > 0
-    print("[PASS] Apriori mathematical verification succeeded.")
+    
+    # Test affinity score helper
+    affinity = miner.compute_affinity(confidence=0.8, lift=10.0)
+    assert 0.0 <= affinity <= 1.0, f"Affinity out of bounds: {affinity}"
+    print(f"[PASS] Apriori mathematical & affinity verification succeeded (sample affinity: {affinity}).")
 
 def test_content_based_engine():
     print("\n--- 2. TESTING CONTENT-BASED SIMILARITY ---")
@@ -57,40 +61,117 @@ def test_content_based_engine():
     search_recs = cb.search_similar("wireless keyboard ergonomic", top_n=3)
     assert len(search_recs) > 0
     print(f"Search query 'wireless keyboard ergonomic' top match: {search_recs[0]['product_name']} ({search_recs[0]['similarity_score']})")
-    print("[PASS] Content-based verification succeeded.")
+
+    # Test pairwise product similarity
+    p2 = cb.products[1]["product_id"]
+    pair_sim = cb.compute_product_similarity(p1, p2)
+    assert 0.0 <= pair_sim <= 1.0
+    print(f"[PASS] Content-based verification succeeded (Pairwise sim {p1} <-> {p2}: {pair_sim:.4f}).")
+
+def test_multi_signal_ranker():
+    print("\n--- 3. TESTING MULTI-SIGNAL HYBRID RANKER ---")
+    ranker = MultiSignalRanker()
+    assert abs(sum(ranker.weights.values()) - 1.0) < 0.001
+
+    # Candidate with strong Apriori signal
+    cand_apriori = {
+        "product_id": "P101",
+        "product_name": "Test Laptop",
+        "stock_quantity": 50,
+        "apriori_score": 0.90,
+        "search_score": 0.10,
+        "similarity_score": 0.20,
+        "popularity_score": 0.80,
+        "matched_antecedents": ["Laptop Case"]
+    }
+    scored = ranker.compute_candidate_score(cand_apriori)
+    assert 0.0 <= scored["score"] <= 1.0
+    assert "apriori_score" in scored and scored["apriori_score"] == 0.90
+    assert "Apriori" in scored["algorithm"]
+    print(f"Apriori candidate scored: {scored['score']} [{scored['algorithm']}]")
+
+    # Candidate with strong Search Intent signal
+    cand_search = {
+        "product_id": "P102",
+        "product_name": "Wireless Mouse",
+        "stock_quantity": 30,
+        "apriori_score": 0.0,
+        "search_score": 0.85,
+        "similarity_score": 0.10,
+        "popularity_score": 0.70,
+        "matched_search_query": "ergonomic mouse"
+    }
+    scored_s = ranker.compute_candidate_score(cand_search)
+    assert 0.0 <= scored_s["score"] <= 1.0
+    assert "Search" in scored_s["algorithm"]
+    print(f"Search candidate scored: {scored_s['score']} [{scored_s['algorithm']}]")
+    print("[PASS] Multi-Signal Ranker math and attribution verified.")
 
 def test_hybrid_recommender():
-    print("\n--- 3. TESTING HYBRID RECOMMENDER WORKFLOW & FALLBACKS ---")
+    print("\n--- 4. TESTING HYBRID RECOMMENDER PIPELINE & CUSTOMER DIVERSITY ---")
     recommender = ProductRecommender(DB_PATH)
 
-    # Test existing customer C101
-    rec_c101 = recommender.recommend("C101", top_n=4)
-    assert "error" not in rec_c101
-    recs = rec_c101["recommendations"]
-    assert len(recs) == 4
-    # Ensure no recommended item is in customer's purchase or cart history
-    history_ids = set(p["product_id"] if isinstance(p, dict) and "product_id" in p else k for k, p in rec_c101.get("purchased", {}).items()) if "purchased" in rec_c101 else set()
-    # Or from the returned recommendations
-    for r in recs:
-        assert r["product_id"] not in [h.get("product_id") for h in rec_c101["history"] if "product_id" in h]
-        assert "algorithm" in r and "reason" in r
+    test_customers = ["C101", "C102", "C103", "C104", "C107", "C108"]
+    all_recs = {}
+
+    for cid in test_customers:
+        res = recommender.recommend(cid, top_n=4)
+        assert "error" not in res, f"Error for customer {cid}: {res.get('error')}"
+        recs = res["recommendations"]
+        assert len(recs) == 4, f"Expected 4 recommendations for {cid}, got {len(recs)}"
+        all_recs[cid] = [r["product_id"] for r in recs]
+
+        # Verify all metadata fields present
+        for r in recs:
+            assert "product_id" in r
+            assert "score" in r and 0.0 <= r["score"] <= 1.0
+            assert "algorithm" in r and len(r["algorithm"]) > 0
+            assert "reason" in r and len(r["reason"]) > 0
+            assert "apriori_score" in r
+            assert "search_score" in r
+            assert "similarity_score" in r
+            assert "popularity_score" in r
+
+        # Verify exclusion of already purchased items
+        hist_pids = set()
+        conn = sqlite3.connect(DB_PATH)
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT DISTINCT oi.product_id FROM orders o
+            JOIN order_items oi ON o.order_id = oi.order_id
+            WHERE o.customer_id = ? AND o.order_status = 'COMPLETED';
+        """, (cid,))
+        hist_pids = {row[0] for row in cur.fetchall()}
+        conn.close()
+
+        for r in recs:
+            assert r["product_id"] not in hist_pids, f"Customer {cid} was recommended already-purchased product {r['product_id']}!"
+
+    # Verify recommendations differ across customers (diversity check)
+    rec_c101 = all_recs["C101"]
+    rec_c103 = all_recs["C103"]
+    rec_c107 = all_recs["C107"]
+    assert rec_c101 != rec_c103, "C101 and C103 received identical recommendations!"
+    assert rec_c103 != rec_c107, "C103 and C107 received identical recommendations!"
+    print(f"Customer recommendation diversity verified across {len(test_customers)} personas.")
 
     # Test non-existent customer
     bad_cust = recommender.recommend("NON_EXISTENT_ID")
     assert "error" in bad_cust
-    print("Non-existent customer handled correctly:", bad_cust["error"])
+    print("Non-existent customer error handling verified:", bad_cust["error"])
 
-    # Test cold-start customer (create a dummy customer in a test connection or check fallback directly)
-    seen_ids = {"P101", "P102"}
-    fallbacks = recommender.get_top_rated_fallback(exclude_ids=seen_ids, limit=3)
+    # Test cold-start fallback
+    fallbacks = recommender.get_top_rated_fallback(exclude_ids={"P101", "P102"}, limit=3)
     assert len(fallbacks) == 3
     for fb in fallbacks:
-        assert fb["product_id"] not in seen_ids
-        assert fb["algorithm"] == "DBMS Analytics (Aggregated Ratings)"
+        assert fb["product_id"] not in {"P101", "P102"}
+        assert "Hybrid" in fb["algorithm"]
+        assert fb["popularity_score"] > 0
 
-    print("[PASS] Hybrid recommendation workflow and fallback verification succeeded.")
+    print("[PASS] Full hybrid recommendation pipeline, metadata, and fallback verification succeeded.")
 
 if __name__ == "__main__":
     test_apriori_math()
     test_content_based_engine()
+    test_multi_signal_ranker()
     test_hybrid_recommender()

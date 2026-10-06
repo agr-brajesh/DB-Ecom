@@ -15,6 +15,7 @@ CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items(order_id);
 CREATE INDEX IF NOT EXISTS idx_reviews_product_rating ON reviews(product_id, rating);
 CREATE INDEX IF NOT EXISTS idx_search_customer ON search_history(customer_id);
 CREATE INDEX IF NOT EXISTS idx_cart_customer ON shopping_cart(customer_id);
+CREATE INDEX IF NOT EXISTS idx_wishlist_customer ON wishlist(customer_id);
 
 -- ==========================================================
 -- 2. ANALYTICAL DATABASE VIEWS

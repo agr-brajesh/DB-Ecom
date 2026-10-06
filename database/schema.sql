@@ -106,3 +106,14 @@ CREATE TABLE IF NOT EXISTS search_history (
     searched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (customer_id) REFERENCES customers(customer_id) ON DELETE CASCADE
 );
+
+-- 10. Wishlist Table (Customer Saved Products for Later)
+CREATE TABLE IF NOT EXISTS wishlist (
+    wishlist_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    customer_id VARCHAR(10) NOT NULL,
+    product_id VARCHAR(10) NOT NULL,
+    added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (customer_id) REFERENCES customers(customer_id) ON DELETE CASCADE,
+    FOREIGN KEY (product_id) REFERENCES products(product_id) ON DELETE CASCADE,
+    UNIQUE(customer_id, product_id)
+);
