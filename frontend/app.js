@@ -807,11 +807,24 @@ function createProductCardHtml(prod, aiMeta = null) {
             typeBadge = "&#11088; Community Top Pick";
         }
 
+        const reasonsList = (aiMeta.reasons && aiMeta.reasons.length ? aiMeta.reasons : [aiMeta.reason || "Recommended for your profile"]).slice(0, 3);
+        const matchBadge = aiMeta.ai_match || "AI Match";
+        const matchStrength = aiMeta.match_strength || "Strong Match";
+
         aiReasonHtml = `
-            <div class="ai-reason-pill ${pillClass}">
-                <div style="font-weight:700; font-size:0.72rem; margin-bottom:0.2rem; text-transform:uppercase; letter-spacing:0.03em;">${typeBadge}</div>
-                ${aiMeta.reason}
-                ${aiMeta.confidence ? `<br><strong>Confidence: ${(aiMeta.confidence * 100).toFixed(1)}% &bull; Lift: ${aiMeta.lift.toFixed(2)}x</strong>` : ''}
+            <div class="ai-explanation-card ${pillClass}">
+                <div class="ai-explanation-head">
+                    <span class="ai-type-pill ${pillClass}">${typeBadge}</span>
+                    <span class="ai-match-badge" title="${matchStrength}">${escapeHtml(matchBadge)}</span>
+                </div>
+                <div class="ai-reasons-preview">
+                    ${reasonsList.map(r => `
+                        <div class="ai-reason-line">
+                            <span class="ai-check-icon">&#10003;</span>
+                            <span class="ai-reason-text">${escapeHtml(r)}</span>
+                        </div>
+                    `).join('')}
+                </div>
             </div>
         `;
     }
@@ -895,14 +908,7 @@ async function loadRecommendations(customerId) {
                 }
 
                 recGrid.innerHTML = data.recommendations.map(rec => {
-                    return createProductCardHtml(rec, {
-                        recommendation_type: rec.recommendation_type,
-                        reason: rec.reason,
-                        algorithm: rec.algorithm,
-                        confidence: rec.confidence,
-                        lift: rec.lift,
-                        score: rec.score
-                    });
+                    return createProductCardHtml(rec, rec);
                 }).join("");
             }
         }
@@ -1424,14 +1430,7 @@ async function loadCartSuggestions(customerId) {
         if (json.status === "success" && json.data.recommendations && json.data.recommendations.length > 0) {
             sugSection.style.display = "block";
             sugGrid.innerHTML = json.data.recommendations.map(rec => {
-                return createProductCardHtml(rec, {
-                    recommendation_type: rec.recommendation_type || "COMPLETE_YOUR_SETUP",
-                    reason: rec.reason,
-                    algorithm: rec.algorithm,
-                    confidence: rec.confidence,
-                    lift: rec.lift,
-                    score: rec.score
-                });
+                return createProductCardHtml(rec, rec);
             }).join("");
         } else {
             sugSection.style.display = "none";
@@ -1457,7 +1456,8 @@ async function loadDrawerSuggestions(customerId) {
                     <div class="drawer-rec-row">
                         <div style="flex:1; padding-right:0.5rem;">
                             <div class="drawer-rec-name" onclick="openProductModal('${rec.product_id}')">${escapeHtml(rec.product_name)}</div>
-                            <div class="drawer-rec-price">${formatMoney(rec.price)} &bull; <span style="color:#a5b4fc;">${escapeHtml(rec.reason)}</span></div>
+                            <div class="drawer-rec-price">${formatMoney(rec.price)} &bull; <span class="ai-match-badge-sm">${escapeHtml(rec.ai_match || 'Match')}</span></div>
+                            <div style="font-size:0.7rem; color:#cbd5e1; margin-top:0.15rem;">✓ ${escapeHtml((rec.reasons && rec.reasons.length) ? rec.reasons[0] : (rec.reason || ''))}</div>
                         </div>
                         <button class="btn-add-cart" style="padding:0.25rem 0.6rem; font-size:0.75rem;" onclick="addProductToCart('${rec.product_id}', 1, event)">+ Add</button>
                     </div>
@@ -1969,6 +1969,8 @@ function switchAdminTab(tabName) {
     } else if (tabName === "customers") {
         renderAdminCustomers();
     } else if (tabName === "rules") {
+        initXaiAuditorControls();
+        runXaiAudit();
         loadRules();
     } else if (tabName === "dbms") {
         loadDbmsView("v_market_basket");
@@ -2353,3 +2355,269 @@ function getCategoryIconSvg(catId) {
     };
     return icons[catId] || `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>`;
 }
+
+// ==========================================================
+// PHASE 6: EXPLAINABLE AI (XAI) & AUDITOR CONTROLLER
+// ==========================================================
+
+function handleXaiContextChange() {
+    const ctxSelect = document.getElementById("xaiContextSelect");
+    const wrap = document.getElementById("xaiProductPickerWrap");
+    if (!ctxSelect || !wrap) return;
+    const val = ctxSelect.value;
+    if (val === "product_view" || val === "alternatives") {
+        wrap.style.display = "flex";
+    } else {
+        wrap.style.display = "none";
+    }
+    runXaiAudit();
+}
+
+function initXaiAuditorControls() {
+    const prodSelect = document.getElementById("xaiProductSelect");
+    if (!prodSelect) return;
+    if (prodSelect.options.length <= 1 && allProducts && allProducts.length > 0) {
+        prodSelect.innerHTML = allProducts.map(p => 
+            `<option value="${p.product_id}">${p.product_id} &bull; ${escapeHtml(p.product_name)} (${formatMoney(p.price)})</option>`
+        ).join("");
+    }
+}
+
+async function runXaiAudit() {
+    const custSelect = document.getElementById("xaiCustomerSelect");
+    const ctxSelect = document.getElementById("xaiContextSelect");
+    const prodSelect = document.getElementById("xaiProductSelect");
+    const topNSelect = document.getElementById("xaiTopNSelect");
+    const out = document.getElementById("xaiAuditResults");
+    if (!out) return;
+
+    initXaiAuditorControls();
+
+    const custId = custSelect ? custSelect.value : "C101";
+    const ctxType = ctxSelect ? ctxSelect.value : "default";
+    const currentPid = (prodSelect && (ctxType === "product_view" || ctxType === "alternatives")) ? prodSelect.value : "";
+    const topN = topNSelect ? parseInt(topNSelect.value) : 4;
+
+    out.innerHTML = `
+        <div style="text-align:center; padding:2rem; color:var(--text-muted);">
+            <div class="skeleton-shimmer" style="height:32px; width:240px; margin:0 auto 1rem auto; border-radius:8px;"></div>
+            Computing multi-signal hybrid recommendation audit...
+        </div>
+    `;
+
+    try {
+        let url = `${API_BASE}/api/recommendations/audit/${custId}?context_type=${encodeURIComponent(ctxType)}&top_n=${topN}`;
+        if (currentPid) {
+            url += `&current_product_id=${encodeURIComponent(currentPid)}`;
+        }
+        const res = await fetch(url);
+        const json = await res.json();
+
+        if (json.status !== "success" || !json.audit) {
+            out.innerHTML = `<div style="text-align:center; color:var(--accent-rose); padding:2rem;">Failed to audit recommendations for ${escapeHtml(custId)}.</div>`;
+            return;
+        }
+
+        const audit = json.audit;
+        const ctx = audit.context || {};
+        const recs = audit.recommendations || [];
+        const weights = ctx.active_weights || { apriori: 0.4, search: 0.25, similarity: 0.2, popularity: 0.15 };
+
+        // 1. Meta KPI Banner
+        let metaHtml = `
+            <div class="xai-meta-banner">
+                <div class="xai-meta-kpi">
+                    <div class="xai-meta-kpi-label">Resolved Profile</div>
+                    <div class="xai-meta-kpi-val" style="color:#818cf8; text-transform:uppercase; font-size:0.95rem;">${escapeHtml(ctx.resolved_profile || ctxType)}</div>
+                </div>
+                <div class="xai-meta-kpi">
+                    <div class="xai-meta-kpi-label">Active Weight Profile</div>
+                    <div style="font-size:0.75rem; color:var(--text-secondary); line-height:1.4;">
+                        <span style="color:#818cf8;">Apr: ${Math.round((weights.apriori||0)*100)}%</span> &bull; 
+                        <span style="color:#06b6d4;">Srch: ${Math.round((weights.search||0)*100)}%</span> &bull; 
+                        <span style="color:#38bdf8;">Sim: ${Math.round((weights.similarity||0)*100)}%</span> &bull; 
+                        <span style="color:#f59e0b;">Pop: ${Math.round((weights.popularity||0)*100)}%</span>
+                    </div>
+                </div>
+                <div class="xai-meta-kpi">
+                    <div class="xai-meta-kpi-label">Customer Activity State</div>
+                    <div style="font-size:0.75rem; color:var(--text-secondary); line-height:1.4;">
+                        <strong>${audit.history_count || 0}</strong> Orders &bull; 
+                        <strong>${audit.cart_count || 0}</strong> In Cart &bull; 
+                        <strong>${audit.search_count || 0}</strong> Searches
+                    </div>
+                </div>
+                <div class="xai-meta-kpi">
+                    <div class="xai-meta-kpi-label">Audited Items</div>
+                    <div class="xai-meta-kpi-val" style="color:#34d399;">${recs.length} Candidates</div>
+                </div>
+            </div>
+        `;
+
+        if (recs.length === 0) {
+            out.innerHTML = metaHtml + `<div style="text-align:center; padding:2rem; color:var(--text-muted);">No candidates met criteria for this context.</div>`;
+            return;
+        }
+
+        // 2. Candidate Inspection Cards
+        const cardsHtml = recs.map((rec, idx) => {
+            const signals = rec.signals || {};
+            const tech = rec.technical_explanation || {};
+            const aprDetails = tech.apriori_details || {};
+            const srchDetails = tech.search_details || {};
+            const simDetails = tech.similarity_details || {};
+            const invDetails = tech.inventory_details || {};
+            const provSources = rec.source || rec.provenance || tech.provenance_sources || [];
+
+            const aprScore = signals.apriori !== undefined ? signals.apriori : (signals.apriori_score || 0);
+            const srchScore = signals.search_intent !== undefined ? signals.search_intent : (signals.search_score || 0);
+            const simScore = signals.content_similarity !== undefined ? signals.content_similarity : (signals.similarity_score || 0);
+            const popScore = signals.popularity !== undefined ? signals.popularity : (signals.popularity_score || 0);
+            const invScore = signals.inventory !== undefined ? signals.inventory : (signals.inventory_score || 1.0);
+
+            const aprWeight = weights.apriori || 0.40;
+            const srchWeight = weights.search || 0.25;
+            const simWeight = weights.similarity || 0.20;
+            const popWeight = weights.popularity || 0.15;
+
+            const aprPoints = (aprScore * aprWeight).toFixed(3);
+            const srchPoints = (srchScore * srchWeight).toFixed(3);
+            const simPoints = (simScore * simWeight).toFixed(3);
+            const popPoints = (popScore * popWeight).toFixed(3);
+
+            const ruleProof = aprDetails.rule_statement 
+                ? `Rule: ${escapeHtml(aprDetails.rule_statement)}\nSupport: ${((aprDetails.support||0)*100).toFixed(1)}% | Confidence: ${((aprDetails.confidence||0)*100).toFixed(1)}% | Lift: ${(aprDetails.lift||0).toFixed(2)}x`
+                : (aprDetails.affinity_score > 0 ? `Historical co-purchase affinity score: ${aprDetails.affinity_score.toFixed(3)}` : `No active co-purchase rule fired for this item.`);
+
+            const searchProof = srchDetails.matched_query
+                ? `Query match: '${escapeHtml(srchDetails.matched_query)}' (TF-IDF Decay: ${(srchScore*100).toFixed(1)}%)`
+                : (srchScore > 0 ? `Lexical match score: ${(srchScore*100).toFixed(1)}%` : `No search intent match.`);
+
+            const simProof = simDetails.reference_product
+                ? `Cosine match with '${escapeHtml(simDetails.reference_product)}': ${(simScore*100).toFixed(1)}%`
+                : (simScore > 0 ? `Catalog TF-IDF similarity: ${(simScore*100).toFixed(1)}%` : `Baseline catalog similarity.`);
+
+            return `
+                <div class="xai-candidate-card">
+                    <div class="xai-rank-badge">RANK #${idx + 1}</div>
+                    
+                    <!-- Left Column: Product Info & Customer Explanation -->
+                    <div>
+                        <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em;">${escapeHtml(rec.category_name || '')}</div>
+                        <h4 style="margin:0.25rem 0 0.5rem 0; font-size:1.15rem; color:var(--text-primary); cursor:pointer;" onclick="openProductModal('${rec.product_id}')">
+                            ${escapeHtml(rec.product_name)} <span style="font-size:0.75rem; font-family:var(--font-mono); color:var(--text-muted);">(${rec.product_id})</span>
+                        </h4>
+                        
+                        <div style="display:flex; align-items:baseline; gap:0.75rem; margin-bottom:0.75rem;">
+                            <span style="font-size:1.25rem; font-weight:800; color:var(--text-primary);">${formatMoney(rec.price)}</span>
+                            <span style="font-size:0.8rem; color:${rec.stock_quantity > 0 ? 'var(--accent-emerald)' : 'var(--accent-rose)'}; font-weight:600;">
+                                ${rec.stock_quantity > 0 ? `In Stock (${rec.stock_quantity})` : 'Out of Stock'}
+                            </span>
+                            <span style="font-size:0.8rem; color:#f59e0b;">★ ${rec.avg_rating || 4.5} (${rec.review_count || 0})</span>
+                        </div>
+
+                        <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.85rem; flex-wrap:wrap;">
+                            <span class="badge-pill-academic" style="font-size:0.7rem; padding:0.2rem 0.5rem;">${escapeHtml(rec.recommendation_type)}</span>
+                            <span class="ai-match-badge">${escapeHtml(rec.ai_match || 'Match')}</span>
+                            <span style="font-size:0.72rem; color:var(--text-muted);">${escapeHtml(rec.match_strength || '')}</span>
+                        </div>
+
+                        <!-- Customer-Facing Reasons Block -->
+                        <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:var(--radius-sm); padding:0.75rem; margin-bottom:0.75rem;">
+                            <div style="font-size:0.7rem; font-weight:700; color:#c7d2fe; text-transform:uppercase; margin-bottom:0.4rem; letter-spacing:0.04em;">
+                                What Customer Sees ("Why Recommended?")
+                            </div>
+                            <div class="ai-reasons-preview">
+                                ${(rec.reasons || [rec.reason || 'Recommended']).map(r => `
+                                    <div class="ai-reason-line">
+                                        <span class="ai-check-icon">&#10003;</span>
+                                        <span class="ai-reason-text">${escapeHtml(r)}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+
+                        <!-- Provenance / Contributing Source Pills -->
+                        <div>
+                            <div style="font-size:0.68rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.03em;">Contributing Subsystems (Provenance)</div>
+                            <div class="xai-tag-group">
+                                ${provSources.map(s => `<span class="xai-source-tag">${escapeHtml(s)}</span>`).join('')}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Multi-Signal Breakdown & Viva Proof -->
+                    <div>
+                        <div style="display:flex; align-items:baseline; justify-content:space-between; margin-bottom:0.75rem; padding-bottom:0.5rem; border-bottom:1px solid rgba(255,255,255,0.08);">
+                            <span style="font-size:0.75rem; font-weight:700; color:var(--text-secondary); text-transform:uppercase;">Composite Ranking Score</span>
+                            <span style="font-size:1.4rem; font-family:var(--font-mono); font-weight:800; color:#818cf8;">
+                                ${(rec.score || 0).toFixed(4)}
+                            </span>
+                        </div>
+
+                        <!-- 5-Signal Breakdown Bars -->
+                        <div class="xai-signal-bar-row">
+                            <span class="xai-signal-name" style="color:#818cf8;">Apriori Rule (${Math.round(aprWeight*100)}%)</span>
+                            <div class="xai-meter-bg">
+                                <div class="xai-meter-fill" style="width:${Math.round(aprScore*100)}%; background:#818cf8;"></div>
+                            </div>
+                            <span class="xai-meter-num">${aprScore.toFixed(2)} &rarr; +${aprPoints}</span>
+                        </div>
+
+                        <div class="xai-signal-bar-row">
+                            <span class="xai-signal-name" style="color:#06b6d4;">Search Intent (${Math.round(srchWeight*100)}%)</span>
+                            <div class="xai-meter-bg">
+                                <div class="xai-meter-fill" style="width:${Math.round(srchScore*100)}%; background:#06b6d4;"></div>
+                            </div>
+                            <span class="xai-meter-num">${srchScore.toFixed(2)} &rarr; +${srchPoints}</span>
+                        </div>
+
+                        <div class="xai-signal-bar-row">
+                            <span class="xai-signal-name" style="color:#38bdf8;">Similarity (${Math.round(simWeight*100)}%)</span>
+                            <div class="xai-meter-bg">
+                                <div class="xai-meter-fill" style="width:${Math.round(simScore*100)}%; background:#38bdf8;"></div>
+                            </div>
+                            <span class="xai-meter-num">${simScore.toFixed(2)} &rarr; +${simPoints}</span>
+                        </div>
+
+                        <div class="xai-signal-bar-row">
+                            <span class="xai-signal-name" style="color:#f59e0b;">Popularity (${Math.round(popWeight*100)}%)</span>
+                            <div class="xai-meter-bg">
+                                <div class="xai-meter-fill" style="width:${Math.round(popScore*100)}%; background:#f59e0b;"></div>
+                            </div>
+                            <span class="xai-meter-num">${popScore.toFixed(2)} &rarr; +${popPoints}</span>
+                        </div>
+
+                        <div class="xai-signal-bar-row">
+                            <span class="xai-signal-name" style="color:#10b981;">Inventory Gate</span>
+                            <div class="xai-meter-bg">
+                                <div class="xai-meter-fill" style="width:${invScore > 0 ? '100' : '0'}%; background:#10b981;"></div>
+                            </div>
+                            <span class="xai-meter-num">${invScore > 0 ? '1.00 (Pass)' : '0.00 (Block)'}</span>
+                        </div>
+
+                        <!-- Technical Viva Evidence Box -->
+                        <div class="xai-viva-box">
+                            <div style="color:#38bdf8; font-weight:700; margin-bottom:0.25rem;">[MATHEMATICAL &amp; SYMBOLIC PROOF]</div>
+                            <div style="margin-bottom:0.25rem;">&bull; <strong>Association Evidence:</strong> ${ruleProof}</div>
+                            <div style="margin-bottom:0.25rem;">&bull; <strong>Search Evidence:</strong> ${searchProof}</div>
+                            <div>&bull; <strong>Content Similarity:</strong> ${simProof}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join("");
+
+        out.innerHTML = metaHtml + `<div class="xai-cards-grid">${cardsHtml}</div>`;
+
+    } catch (err) {
+        console.error("Error running XAI audit:", err);
+        out.innerHTML = `<div style="text-align:center; color:var(--accent-rose); padding:2rem;">Error executing recommendation audit: ${escapeHtml(err.message)}</div>`;
+    }
+}
+
+// Window bindings
+window.handleXaiContextChange = handleXaiContextChange;
+window.initXaiAuditorControls = initXaiAuditorControls;
+window.runXaiAudit = runXaiAudit;
+

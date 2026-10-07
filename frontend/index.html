@@ -938,8 +938,78 @@
                     </div>
                 </div>
 
-                <!-- 5. ADMIN AI INTELLIGENCE (APRIORI EXPLORER) -->
+                <!-- 5. ADMIN AI INTELLIGENCE & EXPLAINABLE AI AUDITOR -->
                 <div id="admin-tab-rules" class="admin-tab-pane">
+                    <!-- Phase 6: EXPLAINABLE AI & RECOMMENDATION AUDITOR -->
+                    <div class="xai-auditor-section">
+                        <div class="admin-pane-header">
+                            <div>
+                                <h2>Explainable AI (XAI) &amp; Recommendation Auditor</h2>
+                                <p class="admin-subtitle">Inspect recommendation provenance, multi-signal feature scoring, and mathematical proofs for university viva</p>
+                            </div>
+                            <span class="badge-pill-academic" style="background:rgba(16,185,129,0.15); color:#34d399; border-color:rgba(16,185,129,0.3);">Phase 6: Explainable AI Engine</span>
+                        </div>
+
+                        <!-- Interactive Auditor Controls -->
+                        <div class="rule-controls-card xai-controls-card">
+                            <div class="xai-control-row">
+                                <div class="xai-control-item">
+                                    <label for="xaiCustomerSelect">Target Customer Persona:</label>
+                                    <select id="xaiCustomerSelect" class="admin-select" onchange="runXaiAudit()">
+                                        <option value="C101">C101 &bull; Alex Rivera (Workstation Pro)</option>
+                                        <option value="C102">C102 &bull; Maya Lin (Mobile &amp; Audio)</option>
+                                        <option value="C103">C103 &bull; Jordan Hayes (Competitive Gamer)</option>
+                                        <option value="C104">C104 &bull; Priya Sharma (4K Filmmaker)</option>
+                                        <option value="C105">C105 &bull; Marcus Vance (Fitness &amp; Wearables)</option>
+                                        <option value="C106">C106 &bull; Elena Rostova (Ergonomic Home Office)</option>
+                                        <option value="C107">C107 &bull; Liam O'Connor (Specialty Coffee)</option>
+                                        <option value="C108">C108 &bull; Sophie Chen (Digital Student)</option>
+                                        <option value="GUEST_COLD_START">Guest User &bull; (Zero History / Cold Start)</option>
+                                    </select>
+                                </div>
+                                <div class="xai-control-item">
+                                    <label for="xaiContextSelect">Simulated Shopping Context:</label>
+                                    <select id="xaiContextSelect" class="admin-select" onchange="handleXaiContextChange()">
+                                        <option value="default">Home Browsing (Long-Term Preferences)</option>
+                                        <option value="search_dominant">Active Search Session (Query Intent Dominant)</option>
+                                        <option value="product_view">Product Detail View (Co-Purchase &amp; Similarity)</option>
+                                        <option value="cart">Active Cart / Checkout (Setup Complements)</option>
+                                        <option value="alternatives">Out-of-Stock Alternatives (Spec &amp; Price Match)</option>
+                                        <option value="cold_start">Cold-Start Fallback (Popularity Baseline)</option>
+                                    </select>
+                                </div>
+                                <div class="xai-control-item" id="xaiProductPickerWrap" style="display:none;">
+                                    <label for="xaiProductSelect">Target Context Product:</label>
+                                    <select id="xaiProductSelect" class="admin-select" onchange="runXaiAudit()">
+                                        <!-- Populated dynamically -->
+                                    </select>
+                                </div>
+                                <div class="xai-control-item" style="max-width:130px;">
+                                    <label for="xaiTopNSelect">Top Candidates:</label>
+                                    <select id="xaiTopNSelect" class="admin-select" onchange="runXaiAudit()">
+                                        <option value="3">Top 3</option>
+                                        <option value="4" selected>Top 4</option>
+                                        <option value="6">Top 6</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div style="display:flex; justify-content:flex-end; margin-top:0.75rem;">
+                                <button id="runXaiAuditBtn" class="btn-primary" onclick="runXaiAudit()">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:0.35rem;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                    Audit Recommendation Pipeline
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Live Auditor Output Container -->
+                        <div id="xaiAuditResults" class="xai-results-container">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+
+                    <div class="admin-section-divider" style="margin: 2.5rem 0 1.5rem 0; border-top: 1px dashed rgba(255,255,255,0.1);"></div>
+
+                    <!-- Apriori Association Rule Mining Explorer -->
                     <div class="admin-pane-header">
                         <div>
                             <h2>Apriori Association Rule Mining Explorer</h2>

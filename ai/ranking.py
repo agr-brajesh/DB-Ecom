@@ -170,7 +170,11 @@ class MultiSignalRanker:
             "avg_rating": candidate.get("avg_rating", 4.5),
             "review_count": candidate.get("review_count", 0),
             "confidence": candidate.get("confidence"),
-            "lift": candidate.get("lift")
+            "lift": candidate.get("lift"),
+            "support": candidate.get("support"),
+            "matched_antecedents": candidate.get("matched_antecedents", []),
+            "matched_search_query": candidate.get("matched_search_query"),
+            "matched_reference_product": candidate.get("matched_reference_product")
         }
 
     def _derive_explanation(self, dominant_signal: str, apriori_score: float,

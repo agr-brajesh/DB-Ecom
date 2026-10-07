@@ -26,6 +26,7 @@ from .apriori import AprioriMiner
 from .content_based import ContentBasedRecommender
 from .ranking import MultiSignalRanker, DEFAULT_WEIGHTS, CONTEXT_WEIGHT_PROFILES
 from .utils import CatalogMetadata, log_scale, min_max_scale
+from .explanations import ExplanationEngine
 
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "database", "ecommerce.db")
 
@@ -42,6 +43,8 @@ class ProductRecommender:
         self.content_engine = ContentBasedRecommender(db_path)
         # Multi-Signal Context-Aware Hybrid Ranker
         self.ranker = MultiSignalRanker(weights)
+        # Phase 6: Explainable AI & Trustworthy Recommendation Engine
+        self.explanation_engine = ExplanationEngine()
         # Precompute normalized popularity scores for all products
         self.product_popularity_scores: Dict[str, float] = self._precompute_popularity()
 
@@ -357,6 +360,7 @@ class ProductRecommender:
             ant_names = rule_info["antecedent_names"] if rule_info else []
             conf = rule_info["confidence"] if rule_info else None
             lift = rule_info["lift"] if rule_info else None
+            supp = rule_info.get("support") if rule_info else None
 
             # Signal 2: Search Intent Score (with recency decay applied)
             search_match = search_matched_scores.get(pid)
@@ -406,7 +410,8 @@ class ProductRecommender:
                 "matched_search_query": search_q,
                 "matched_reference_product": matched_ref_prod,
                 "confidence": conf,
-                "lift": lift
+                "lift": lift,
+                "support": supp
             })
 
         # ---------------------------------------------------------
@@ -431,6 +436,17 @@ class ProductRecommender:
             )
             ranked_recommendations.extend(fallbacks)
 
+        # ---------------------------------------------------------
+        # PHASE 6: EXPLAINABLE AI & TRUSTWORTHY RECOMMENDATIONS ENRICHMENT
+        # ---------------------------------------------------------
+        enriched_recommendations = self.explanation_engine.enrich_recommendations(
+            candidates=ranked_recommendations[:top_n],
+            customer_context=context,
+            context_type=profile_name,
+            active_weights=active_weights,
+            current_product_id=current_product_id
+        )
+
         out = {
             "status": "success",
             "context_type": profile_name,
@@ -451,7 +467,7 @@ class ProductRecommender:
             "history": list(context["purchased"].values()),
             "active_cart": list(context["cart"].values()),
             "recent_searches": context["searches"],
-            "recommendations": ranked_recommendations[:top_n]
+            "recommendations": enriched_recommendations
         }
         if is_guest_customer:
             out["error"] = f"Customer {customer_id} not found."
@@ -552,6 +568,13 @@ class ProductRecommender:
                 "reason": f"Frequently paired with {main_prod['product_name']}"
             })
 
+        # Phase 6: Enrich bundle items with explanations
+        enriched_bundle_items = self.explanation_engine.enrich_recommendations(
+            candidates=bundle_items,
+            context_type="frequently_bought_together",
+            current_product_id=product_id
+        )
+
         total_individual_price = round(main_prod["price"] + addon_total, 2)
         # 10% instant bundle discount
         bundle_discount = round(total_individual_price * 0.10, 2) if bundle_items else 0.0
@@ -566,8 +589,8 @@ class ProductRecommender:
                 "stock_quantity": main_prod["stock_quantity"],
                 "category_name": main_prod["category_name"]
             },
-            "items": bundle_items,
-            "bundle_items": bundle_items,
+            "items": enriched_bundle_items,
+            "bundle_items": enriched_bundle_items,
             "regular_total": total_individual_price,
             "total_individual_price": total_individual_price,
             "discount_percentage": 10 if bundle_items else 0,
@@ -648,6 +671,12 @@ class ProductRecommender:
 
         candidates.sort(key=lambda x: (x["score"], x["avg_rating"]), reverse=True)
 
+        enriched_alternatives = self.explanation_engine.enrich_recommendations(
+            candidates=candidates[:top_n],
+            context_type="alternatives",
+            current_product_id=product_id
+        )
+
         return {
             "target_product": {
                 "product_id": target["product_id"],
@@ -656,7 +685,7 @@ class ProductRecommender:
                 "stock_quantity": target["stock_quantity"],
                 "is_out_of_stock": target["stock_quantity"] <= 0
             },
-            "alternatives": candidates[:top_n]
+            "alternatives": enriched_alternatives
         }
 
     def recommend_complete_your_setup(self, customer_id: str,
@@ -734,13 +763,22 @@ class ProductRecommender:
                 "avg_rating": p["avg_rating"],
                 "review_count": p["review_count"],
                 "score": round(item["score"], 4),
+                "apriori_score": round(item["score"], 4),
+                "matched_antecedents": item.get("antecedent_names", []),
                 "recommendation_type": "COMPLETE_YOUR_SETUP",
                 "algorithm": "Context-Aware (Setup & Peripheral Complement Engine)",
                 "reason": f"Verified complementary addition to {' + '.join(item['antecedent_names'][:2])}"
             })
 
+        enriched_setup = self.explanation_engine.enrich_recommendations(
+            candidates=results,
+            customer_context=context,
+            context_type="complete_setup",
+            current_product_id=current_product_id
+        )
+
         return {
             "customer_id": customer_id,
-            "setup_recommendations": results,
-            "setup": results
+            "setup_recommendations": enriched_setup,
+            "setup": enriched_setup
         }

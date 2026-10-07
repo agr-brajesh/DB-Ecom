@@ -1072,6 +1072,258 @@ input, select, textarea {
     color: #fecdd3;
 }
 
+/* ==========================================================
+   PHASE 6: EXPLAINABLE AI & TRUSTWORTHY RECOMMENDATIONS STYLES
+   ========================================================== */
+.ai-explanation-card {
+    background: rgba(15, 23, 42, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-sm);
+    padding: 0.55rem 0.65rem;
+    margin: 0.65rem 0 0.85rem 0;
+    transition: all var(--transition-fast);
+}
+
+.ai-explanation-card:hover {
+    border-color: rgba(99, 102, 241, 0.3);
+    background: rgba(15, 23, 42, 0.7);
+}
+
+.ai-explanation-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.4rem;
+    margin-bottom: 0.4rem;
+}
+
+.ai-type-pill {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--accent-indigo);
+}
+
+.ai-match-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 0.12rem 0.45rem;
+    border-radius: 999px;
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    white-space: nowrap;
+}
+
+.ai-match-badge-sm {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.64rem;
+    font-weight: 700;
+    padding: 0.1rem 0.35rem;
+    border-radius: 999px;
+    background: rgba(56, 189, 248, 0.15);
+    color: #38bdf8;
+    border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+.ai-reasons-preview {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.ai-reason-line {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.35rem;
+    font-size: 0.72rem;
+    color: #cbd5e1;
+    line-height: 1.35;
+}
+
+.ai-check-icon {
+    color: #34d399;
+    font-weight: 800;
+    font-size: 0.75rem;
+    flex-shrink: 0;
+    line-height: 1.35;
+}
+
+.ai-reason-text {
+    flex: 1;
+}
+
+/* Admin XAI Auditor Styles */
+.xai-auditor-section {
+    margin-bottom: 2rem;
+}
+
+.xai-controls-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+}
+
+.xai-control-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+    align-items: flex-end;
+}
+
+.xai-control-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.xai-control-item label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.xai-meta-banner {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.85rem;
+    margin-bottom: 1.5rem;
+}
+
+.xai-meta-kpi {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 0.85rem;
+}
+
+.xai-meta-kpi-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 0.25rem;
+}
+
+.xai-meta-kpi-val {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: var(--text-primary);
+}
+
+.xai-cards-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+}
+
+.xai-candidate-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 1.25rem;
+    display: grid;
+    grid-template-columns: 1fr 1.3fr;
+    gap: 1.25rem;
+    position: relative;
+    transition: border-color var(--transition-fast);
+}
+
+.xai-candidate-card:hover {
+    border-color: rgba(99, 102, 241, 0.4);
+}
+
+@media (max-width: 900px) {
+    .xai-candidate-card {
+        grid-template-columns: 1fr;
+    }
+}
+
+.xai-rank-badge {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    font-size: 0.8rem;
+    font-weight: 800;
+    padding: 0.2rem 0.6rem;
+    background: rgba(99, 102, 241, 0.2);
+    color: #818cf8;
+    border: 1px solid rgba(99, 102, 241, 0.35);
+    border-radius: var(--radius-sm);
+}
+
+.xai-signal-bar-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.45rem;
+    font-size: 0.74rem;
+}
+
+.xai-signal-name {
+    width: 110px;
+    color: var(--text-secondary);
+}
+
+.xai-meter-bg {
+    flex: 1;
+    height: 7px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.xai-meter-fill {
+    height: 100%;
+    border-radius: 999px;
+    transition: width 0.3s ease;
+}
+
+.xai-meter-num {
+    width: 48px;
+    text-align: right;
+    font-family: var(--font-mono);
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.xai-viva-box {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: var(--radius-sm);
+    padding: 0.75rem;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: #cbd5e1;
+    line-height: 1.45;
+    margin-top: 0.65rem;
+}
+
+.xai-tag-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-top: 0.5rem;
+}
+
+.xai-source-tag {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 0.15rem 0.45rem;
+    border-radius: 4px;
+    background: rgba(56, 189, 248, 0.12);
+    color: #38bdf8;
+    border: 1px solid rgba(56, 189, 248, 0.25);
+}
+
 .card-footer {
     display: flex;
     align-items: center;

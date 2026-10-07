@@ -315,6 +315,46 @@ def get_recommendations(customer_id):
     return jsonify({"status": "success", "data": res})
 
 
+@app.route("/api/recommendations/audit/<customer_id>", methods=["GET"])
+def audit_recommendations(customer_id):
+    """
+    Phase 6: Explainable AI & Recommendation Provenance Audit.
+    Returns comprehensive trace of candidate scores, feature matrices,
+    mathematical proofs (support, confidence, lift), and customer explanations.
+    """
+    try:
+        top_n = int(request.args.get("top_n", 6))
+        if top_n <= 0:
+            top_n = 6
+    except (ValueError, TypeError):
+        top_n = 6
+
+    current_product_id = request.args.get("current_product_id")
+    context_type = request.args.get("context_type")
+
+    res = recommender.recommend(
+        customer_id,
+        current_product_id=current_product_id,
+        context_type=context_type,
+        top_n=top_n
+    )
+    if "error" in res and not res.get("recommendations"):
+        return jsonify({"status": "error", "message": res["error"]}), 404
+
+    return jsonify({
+        "status": "success",
+        "audit": {
+            "customer_id": customer_id,
+            "context": res.get("context", {}),
+            "customer": res.get("customer", {}),
+            "history_count": len(res.get("history", [])),
+            "cart_count": len(res.get("active_cart", [])),
+            "search_count": len(res.get("recent_searches", [])),
+            "recommendations": res.get("recommendations", [])
+        }
+    })
+
+
 @app.route("/api/recommendations/bundle/<product_id>", methods=["GET"])
 def get_frequently_bought_bundle(product_id):
     """Phase 5: Genuine Frequently Bought Together bundle with instant bundle savings."""
