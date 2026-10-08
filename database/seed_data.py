@@ -293,13 +293,17 @@ def seed_database():
                 if random_extra not in chosen_items:
                     chosen_items.append(random_extra)
 
-            total = sum(price_map[item] for item in chosen_items)
-            all_orders.append((oid, cust_id, odate, round(total, 2), "COMPLETED"))
             method = random.choice(payment_methods)
-            all_payments.append((pid, oid, method, "SUCCESS", odate, round(total, 2)))
+            order_items_this_order = []
+            total = 0.0
             for item in chosen_items:
                 qty = 1 if price_map[item] > 100 else random.choice([1, 1, 2])
-                all_order_items.append((oid, item, qty, price_map[item]))
+                order_items_this_order.append((oid, item, qty, price_map[item]))
+                total += qty * price_map[item]
+
+            all_order_items.extend(order_items_this_order)
+            all_orders.append((oid, cust_id, odate, round(total, 2), "COMPLETED"))
+            all_payments.append((pid, oid, method, "SUCCESS", odate, round(total, 2)))
 
     # Insert Orders
     cursor.executemany(

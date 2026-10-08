@@ -6,8 +6,9 @@ ACID Transactions, Apriori Analytics, and Live SQL Runner.
 
 import os
 import sys
+import time
 import sqlite3
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, jsonify, request, send_from_directory, g, has_request_context
 from flask_cors import CORS
 
 # Add root directory to sys.path so we can import from database and ai
@@ -18,10 +19,39 @@ from ai.recommender import ProductRecommender
 from ai.business_intelligence import BusinessIntelligenceEngine
 from ai.sentiment_analyzer import ReviewSentimentAnalyzer
 from ai.analytics_engine import AdminAnalyticsEngine
-from database.transactions import checkout_cart, get_db_connection
+from database.transactions import checkout_cart, get_db_connection as _db_get_connection
 
 app = Flask(__name__, static_folder=os.path.join(BASE_DIR, "frontend"), static_url_path="")
 CORS(app)
+
+
+def get_db_connection():
+    """
+    Returns a request-scoped SQLite connection stored on Flask's g object.
+    Automatically managed and closed via teardown_request.
+    """
+    if has_request_context():
+        if "db" in g:
+            try:
+                g.db.execute("SELECT 1;")
+            except (sqlite3.ProgrammingError, sqlite3.OperationalError):
+                g.db = _db_get_connection()
+        else:
+            g.db = _db_get_connection()
+        return g.db
+    return _db_get_connection()
+
+
+@app.teardown_request
+def teardown_request_db(exception=None):
+    """Closes request-scoped database connection if one was opened during the request."""
+    db = g.pop("db", None)
+    if db is not None:
+        try:
+            db.close()
+        except Exception:
+            pass
+
 
 DB_PATH = os.path.join(BASE_DIR, "database", "ecommerce.db")
 recommender = ProductRecommender(DB_PATH)
@@ -715,16 +745,29 @@ def add_to_cart():
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # Check stock
+    # Verify customer existence (return 404 if customer not found)
+    cursor.execute("SELECT customer_id FROM customers WHERE customer_id = ?;", (customer_id,))
+    if not cursor.fetchone():
+        return jsonify({"status": "error", "message": f"Customer '{customer_id}' not found"}), 404
+
+    # Check product existence and stock
     cursor.execute("SELECT stock_quantity, product_name FROM products WHERE product_id = ?;", (product_id,))
     prod = cursor.fetchone()
     if not prod:
-        conn.close()
         return jsonify({"status": "error", "message": "Product not found"}), 404
 
-    if prod[0] < quantity:
-        conn.close()
-        return jsonify({"status": "error", "message": f"Only {prod[0]} in stock for {prod[1]}"}), 400
+    stock_quantity, prod_name = prod[0], prod[1]
+
+    # Validate stock ceiling accounting for items already in cart
+    cursor.execute("SELECT quantity FROM shopping_cart WHERE customer_id = ? AND product_id = ?;", (customer_id, product_id))
+    existing_row = cursor.fetchone()
+    current_cart_qty = existing_row[0] if existing_row else 0
+
+    if current_cart_qty + quantity > stock_quantity:
+        return jsonify({
+            "status": "error",
+            "message": f"Requested quantity ({quantity}) plus existing cart quantity ({current_cart_qty}) exceeds available stock ({stock_quantity}) for {prod_name}"
+        }), 400
 
     # Upsert into cart
     cursor.execute("""
@@ -735,8 +778,7 @@ def add_to_cart():
     """, (customer_id, product_id, quantity))
 
     conn.commit()
-    conn.close()
-    return jsonify({"status": "success", "message": f"Added {prod[1]} to cart."})
+    return jsonify({"status": "success", "message": f"Added {prod_name} to cart."})
 
 
 @app.route("/api/cart/remove", methods=["POST"])
@@ -1280,18 +1322,37 @@ def execute_raw_sql():
         # Enforce read-only connection at SQLite engine level
         db_uri = f"file:{os.path.abspath(DB_PATH)}?mode=ro"
         conn = sqlite3.connect(db_uri, uri=True)
+
+        # 3-second progress handler timeout to prevent long-running queries from hanging the server
+        start_time = time.time()
+        def progress_handler():
+            if time.time() - start_time > 3.0:
+                return 1  # Abort query execution
+            return 0
+
+        conn.set_progress_handler(progress_handler, 1000)
+
         cursor = conn.cursor()
         cursor.execute(stripped_query)
         columns = [col[0] for col in cursor.description] if cursor.description else []
-        rows = cursor.fetchall()
 
-        formatted_rows = [dict(zip(columns, r)) for r in rows]
+        # Safe bounded fetch: fetch at most 101 rows to prevent memory exhaustion on massive joins
+        raw_rows = cursor.fetchmany(101)
+        has_more = len(raw_rows) > 100
+        display_rows = raw_rows[:100]
+
+        formatted_rows = [dict(zip(columns, r)) for r in display_rows]
         return jsonify({
             "status": "success",
             "columns": columns,
             "row_count": len(formatted_rows),
-            "rows": formatted_rows[:100]
+            "has_more": has_more,
+            "rows": formatted_rows
         })
+    except sqlite3.OperationalError as e:
+        if "interrupted" in str(e).lower():
+            return jsonify({"status": "error", "message": "Query execution timed out (exceeded 3.0 seconds limit)."}), 400
+        return jsonify({"status": "error", "message": str(e)}), 400
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 400
     finally:

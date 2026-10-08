@@ -5,6 +5,7 @@
    ========================================================== */
 
 :root {
+    color-scheme: dark;
     --bg-main: #0b0f19;
     --bg-surface: #111827;
     --bg-surface-elevated: #1a2234;
@@ -80,7 +81,35 @@ button {
 input, select, textarea {
     font-family: inherit;
     color: var(--text-primary);
+    background-color: var(--bg-input);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
     outline: none;
+    color-scheme: dark;
+}
+
+select {
+    background-color: var(--bg-surface-elevated);
+    color: var(--text-primary);
+    cursor: pointer;
+    color-scheme: dark;
+}
+
+select option {
+    background-color: #111827;
+    color: #f8fafc;
+    padding: 0.5rem;
+}
+
+select optgroup {
+    background-color: #0f172a;
+    color: var(--text-muted);
+}
+
+input[type="checkbox"], input[type="radio"] {
+    accent-color: var(--primary);
+    cursor: pointer;
+    color-scheme: dark;
 }
 
 /* ==========================================================
@@ -177,11 +206,12 @@ input, select, textarea {
     font-size: 0.75rem;
     font-weight: 500;
     cursor: pointer;
+    color-scheme: dark;
 }
 
 .persona-select option {
-    background: var(--bg-surface);
-    color: var(--text-primary);
+    background: #111827;
+    color: #f8fafc;
 }
 
 /* ==========================================================
@@ -278,10 +308,12 @@ input, select, textarea {
     font-size: 0.8rem;
     cursor: pointer;
     max-width: 140px;
+    color-scheme: dark;
 }
 
 .search-category-select select option {
-    background: var(--bg-surface);
+    background: #111827;
+    color: #f8fafc;
 }
 
 .search-input-wrap {
@@ -1600,13 +1632,38 @@ input, select, textarea {
 }
 
 .sort-select {
-    background: var(--bg-surface);
+    background-color: var(--bg-surface-elevated);
     border: 1px solid var(--border-subtle);
     color: var(--text-primary);
-    padding: 0.4rem 0.8rem;
+    padding: 0.45rem 2.2rem 0.45rem 0.85rem;
     border-radius: var(--radius-sm);
     font-size: 0.82rem;
     cursor: pointer;
+    outline: none;
+    transition: var(--transition);
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    color-scheme: dark;
+}
+
+.sort-select:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+    background-color: var(--bg-card-hover);
+}
+
+.sort-select:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px var(--primary-glow);
+}
+
+.sort-select option {
+    background-color: #111827;
+    color: #f8fafc;
+    padding: 0.5rem;
 }
 
 /* ==========================================================
@@ -3996,6 +4053,44 @@ input, select, textarea {
     display: flex;
     gap: 0.5rem;
     flex-wrap: wrap;
+    align-items: center;
+}
+
+.admin-select {
+    background-color: var(--bg-surface-elevated);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-primary);
+    padding: 0.45rem 2.2rem 0.45rem 0.85rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.82rem;
+    font-family: var(--font-body);
+    font-weight: 500;
+    cursor: pointer;
+    outline: none;
+    transition: var(--transition);
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    color-scheme: dark;
+}
+
+.admin-select:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+    background-color: var(--bg-card-hover);
+}
+
+.admin-select:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px var(--primary-glow);
+}
+
+.admin-select option {
+    background-color: #111827;
+    color: #f8fafc;
+    padding: 0.5rem;
 }
 
 .admin-search-input {
@@ -4007,6 +4102,7 @@ input, select, textarea {
     font-size: 0.82rem;
     outline: none;
     min-width: 220px;
+    color-scheme: dark;
 }
 
 .admin-search-input:focus {

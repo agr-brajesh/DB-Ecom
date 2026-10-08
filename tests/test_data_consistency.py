@@ -73,6 +73,18 @@ class TestDataConsistencyAudit(unittest.TestCase):
         mismatches = self.cursor.fetchall()
         self.assertEqual(len(mismatches), 0, f"Found payments with amount differing from order total: {mismatches}")
 
+    def test_05b_order_total_matches_line_items(self):
+        """Order total_amount must exactly match the sum of its order_items line items (quantity * unit_price)."""
+        self.cursor.execute("""
+            SELECT o.order_id, o.total_amount, ROUND(SUM(oi.quantity * oi.unit_price), 2) as item_sum
+            FROM orders o
+            JOIN order_items oi ON o.order_id = oi.order_id
+            GROUP BY o.order_id
+            HAVING ABS(o.total_amount - item_sum) > 0.05;
+        """)
+        mismatches = self.cursor.fetchall()
+        self.assertEqual(len(mismatches), 0, f"Found orders whose total does not match line item sum: {mismatches}")
+
     def test_06_product_stock_bounds(self):
         """Stock quantities must never be negative."""
         self.cursor.execute("SELECT COUNT(*) FROM products WHERE stock_quantity < 0;")

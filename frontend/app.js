@@ -269,7 +269,8 @@ function navigateTo(viewName) {
 window.navigateTo = navigateTo;
 window.openProductModal = openProductModal;
 window.closeProductModal = closeProductModal;
-window.filterByCategory = filterByCategory;
+window.filterShopByCategory = filterShopByCategory;
+window.filterByCategory = filterShopByCategory;
 window.toggleWishlist = toggleWishlist;
 window.addProductToCart = addProductToCart;
 window.openCartDrawer = openCartDrawer;
@@ -279,14 +280,14 @@ window.closeAdminPortal = closeAdminPortal;
 window.switchAdminTab = switchAdminTab;
 window.executeHeaderSearch = executeHeaderSearch;
 window.filterAndRenderShopCatalog = filterAndRenderShopCatalog;
-window.resetShopFilters = resetShopFilters;
 window.executeCustomerOrder = executeCustomerOrder;
 window.closeConfirmationModal = closeConfirmationModal;
 window.runAdminAcidSimulation = runAdminAcidSimulation;
 window.jumpToVivaStep = jumpToVivaStep;
 window.adjustModalQty = adjustModalQty;
 window.updateItemQuantity = updateItemQuantity;
-window.removeFromCart = removeFromCart;
+window.removeProductFromCart = removeProductFromCart;
+window.removeFromCart = removeProductFromCart;
 window.moveWishlistToCart = moveWishlistToCart;
 window.quickAddBundle = quickAddBundle;
 window.recordSessionEvent = recordSessionEvent;
@@ -2746,7 +2747,8 @@ async function executeUserSql() {
             resultBody.innerHTML = json.rows.map(row => `
                 <tr>${json.columns.map(c => `<td>${row[c] !== null ? escapeHtml(String(row[c])) : '<em>null</em>'}</td>`).join("")}</tr>
             `).join("");
-            showToast(`Query executed: returned ${json.row_count} rows.`, "success");
+            const countMsg = json.has_more ? `${json.row_count}+ (capped at 100)` : `${json.row_count}`;
+            showToast(`Query executed: returned ${countMsg} rows.`, "success");
         } else {
             errorMsg.style.display = "block";
             errorMsg.innerText = json.message || "SQL syntax or execution error.";
@@ -3975,7 +3977,7 @@ function renderProdMatrixTable() {
                 <td><span class="risk-badge ${riskClass}">${p.inventory_risk}</span></td>
                 <td><span class="${perfClass}">${(p.performance_indicator || 'HEALTHY').replace(/_/g, ' ')}</span></td>
                 <td>
-                    <button class="link-btn" style="font-size:0.75rem;" onclick="openReviewInspector('${p.product_id}')">Reviews &rarr;</button>
+                    <button class="link-btn" style="font-size:0.75rem;" onclick="openAdminReviewInspector('${p.product_id}')">Reviews &rarr;</button>
                 </td>
             </tr>
         `;
@@ -4408,6 +4410,7 @@ window.loadAdminReviewIntelligence = loadAdminReviewIntelligence;
 window.filterReviewCatalog = filterReviewCatalog;
 window.handleReviewSearchInput = handleReviewSearchInput;
 window.openAdminReviewInspector = openAdminReviewInspector;
+window.openReviewInspector = openAdminReviewInspector;
 window.closeAdminReviewInspector = closeAdminReviewInspector;
 
 
