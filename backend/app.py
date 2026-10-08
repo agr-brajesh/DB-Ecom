@@ -15,6 +15,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, BASE_DIR)
 
 from ai.recommender import ProductRecommender
+from ai.business_intelligence import BusinessIntelligenceEngine
 from database.transactions import checkout_cart, get_db_connection
 
 app = Flask(__name__, static_folder=os.path.join(BASE_DIR, "frontend"), static_url_path="")
@@ -22,6 +23,7 @@ CORS(app)
 
 DB_PATH = os.path.join(BASE_DIR, "database", "ecommerce.db")
 recommender = ProductRecommender(DB_PATH)
+bi_engine = BusinessIntelligenceEngine(DB_PATH)
 
 
 @app.route("/")
@@ -289,6 +291,69 @@ def get_admin_overview():
             "recent_orders": recent_orders
         }
     })
+
+
+# =============================================================================
+# PHASE 7: BUSINESS INTELLIGENCE & SEGMENTATION ENDPOINTS
+# =============================================================================
+
+@app.route("/api/admin/customer-segments", methods=["GET"])
+def get_admin_customer_segments():
+    """Phase 7: Explainable RFM Customer Segmentation & Cohort Analysis."""
+    try:
+        data = bi_engine.get_customer_segments_summary()
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route("/api/admin/customer/<customer_id>/insights", methods=["GET"])
+def get_admin_customer_insights(customer_id):
+    """Phase 7: Customer-specific lifetime value, RFM proof, and segment reasoning."""
+    try:
+        data = bi_engine.get_customer_insights(customer_id)
+        if data.get("status") == "error":
+            return jsonify(data), 404
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route("/api/admin/inventory-intelligence", methods=["GET"])
+def get_admin_inventory_intelligence():
+    """Phase 7: Inventory demand velocity, days coverage, and restock prioritization."""
+    try:
+        recent_days = int(request.args.get("recent_days", 30))
+        if recent_days <= 0:
+            recent_days = 30
+    except (ValueError, TypeError):
+        recent_days = 30
+
+    try:
+        data = bi_engine.get_inventory_intelligence(recent_window_days=recent_days)
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route("/api/admin/product-intelligence", methods=["GET"])
+def get_admin_product_intelligence():
+    """Phase 7: Product commercial matrix, revenue/volume ranks, ratings, and companion affinity."""
+    try:
+        data = bi_engine.get_product_intelligence()
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route("/api/admin/ai-insights", methods=["GET"])
+def get_admin_ai_insights():
+    """Phase 7: Actionable business insights derived directly from database transactions."""
+    try:
+        data = bi_engine.get_ai_insights()
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 
 @app.route("/api/recommendations/<customer_id>", methods=["GET"])

@@ -768,26 +768,40 @@
             <!-- Admin Sidebar Navigation -->
             <aside class="admin-sidebar">
                 <nav class="admin-nav">
+                    <div class="admin-nav-divider" style="padding-top:0.25rem;">BUSINESS INTELLIGENCE</div>
                     <button class="admin-nav-item active" data-admin-tab="dashboard" onclick="switchAdminTab('dashboard')">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
                         Dashboard Overview
                     </button>
-                    <button class="admin-nav-item" data-admin-tab="inventory" onclick="switchAdminTab('inventory')">
+                    <button class="admin-nav-item" data-admin-tab="customer-intelligence" onclick="switchAdminTab('customer-intelligence')">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                        Customer Intelligence
+                    </button>
+                    <button class="admin-nav-item" data-admin-tab="inventory-intelligence" onclick="switchAdminTab('inventory-intelligence')">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
-                        Products &amp; Inventory
+                        Inventory Intelligence
+                    </button>
+                    <button class="admin-nav-item" data-admin-tab="product-intelligence" onclick="switchAdminTab('product-intelligence')">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                        Product Intelligence
+                    </button>
+                    <button class="admin-nav-item" data-admin-tab="ai-insights" onclick="switchAdminTab('ai-insights')">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                        AI Business Insights
+                    </button>
+
+                    <div class="admin-nav-divider">OPERATIONS &amp; RELATIONAL LAB</div>
+                    <button class="admin-nav-item" data-admin-tab="inventory" onclick="switchAdminTab('inventory')">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                        Product Catalog
                     </button>
                     <button class="admin-nav-item" data-admin-tab="orders" onclick="switchAdminTab('orders')">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
                         All Orders
                     </button>
-                    <button class="admin-nav-item" data-admin-tab="customers" onclick="switchAdminTab('customers')">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                        Customers Directory
-                    </button>
-                    <div class="admin-nav-divider">AI &amp; DBMS ENGINE</div>
                     <button class="admin-nav-item" data-admin-tab="rules" onclick="switchAdminTab('rules')">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-                        AI Intelligence (Apriori Rules)
+                        XAI Auditor &amp; Apriori Rules
                     </button>
                     <button class="admin-nav-item" data-admin-tab="dbms" onclick="switchAdminTab('dbms')">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
@@ -862,6 +876,302 @@
                             </table>
                         </div>
                     </div>
+                </div>
+
+                <!-- ==========================================================
+                     PHASE 7 TAB 1: CUSTOMER INTELLIGENCE & RFM SEGMENTATION
+                     ========================================================== -->
+                <div id="admin-tab-customer-intelligence" class="admin-tab-pane">
+                    <div class="admin-pane-header">
+                        <div>
+                            <h2>Customer Intelligence &amp; RFM Segmentation</h2>
+                            <p class="admin-subtitle">Normalized Recency, Frequency, and Monetary (RFM) scoring with deterministic customer cohort classification</p>
+                        </div>
+                        <span class="badge-pill-academic" style="background:rgba(99,102,241,0.15); color:#a5b4fc; border-color:rgba(99,102,241,0.3);">Phase 7: Customer Intelligence</span>
+                    </div>
+
+                    <!-- Customer Intelligence KPIs -->
+                    <div class="admin-kpi-grid">
+                        <div class="kpi-card">
+                            <span class="kpi-label">Total Customers</span>
+                            <h3 class="kpi-val" id="ciKpiTotalCustomers">--</h3>
+                            <span class="kpi-sub">Registered accounts in database</span>
+                        </div>
+                        <div class="kpi-card">
+                            <span class="kpi-label">Active / High-Value Shoppers</span>
+                            <h3 class="kpi-val" id="ciKpiActiveShoppers" style="color:#34d399;">--</h3>
+                            <span class="kpi-sub">High Value + Frequent + Active</span>
+                        </div>
+                        <div class="kpi-card">
+                            <span class="kpi-label">Avg Customer Lifetime Spend</span>
+                            <h3 class="kpi-val" id="ciKpiAvgSpend">$--</h3>
+                            <span class="kpi-sub">Total revenue / Customer count</span>
+                        </div>
+                        <div class="kpi-card">
+                            <span class="kpi-label">Store Avg Order Value (AOV)</span>
+                            <h3 class="kpi-val" id="ciKpiStoreAov">$--</h3>
+                            <span class="kpi-sub">Total revenue / Completed orders</span>
+                        </div>
+                        <div class="kpi-card">
+                            <span class="kpi-label">Avg Purchase Frequency</span>
+                            <h3 class="kpi-val" id="ciKpiAvgFreq">--</h3>
+                            <span class="kpi-sub">Average completed orders / customer</span>
+                        </div>
+                    </div>
+
+                    <!-- Customer Segment Distribution Cards & Visual Bar -->
+                    <div class="admin-card">
+                        <div class="ci-segment-header-row">
+                            <div>
+                                <h3>Customer Segmentation Cohorts</h3>
+                                <p class="view-intro">Deterministic RFM classification derived from actual transaction history. Click any segment to filter.</p>
+                            </div>
+                            <div class="segment-filter-pills" id="ciSegmentFilterPills">
+                                <button class="seg-pill active" onclick="filterCiCustomersBySegment('ALL')">All Customers</button>
+                            </div>
+                        </div>
+
+                        <!-- Visual Distribution Bar -->
+                        <div class="segment-visual-bar-wrap" id="ciSegmentVisualBar"></div>
+
+                        <!-- Segment Breakdown Cards Grid -->
+                        <div class="segment-cards-grid" id="ciSegmentCardsGrid"></div>
+                    </div>
+
+                    <!-- Interactive Customer Detail Inspector (Phase 7 Detail View) -->
+                    <div class="admin-card ci-inspector-card">
+                        <div class="ci-inspector-header">
+                            <div>
+                                <h3>Customer Detail Insights &amp; RFM Audit</h3>
+                                <p class="view-intro">Inspect granular lifetime metrics, RFM normalized proofs, and deterministic segment explanations for any customer.</p>
+                            </div>
+                            <div class="ci-inspector-select-wrap">
+                                <label for="ciCustomerSelect">Select Customer:</label>
+                                <select id="ciCustomerSelect" class="admin-select" onchange="handleCiCustomerSelectChange()"></select>
+                            </div>
+                        </div>
+
+                        <div id="ciCustomerDetailContent" class="ci-detail-content-wrap">
+                            <!-- Populated dynamically via /api/admin/customer/<id>/insights -->
+                        </div>
+                    </div>
+
+                    <!-- Complete Customer Directory Table -->
+                    <div class="admin-card">
+                        <div class="ci-table-controls-row">
+                            <h3>Customer RFM Directory</h3>
+                            <input type="text" id="ciCustomerSearchInput" class="admin-search-input" placeholder="Search by name, city, or ID..." oninput="handleCiSearchInput()">
+                        </div>
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Customer ID</th>
+                                        <th>Name</th>
+                                        <th>City</th>
+                                        <th>Segment</th>
+                                        <th>Orders</th>
+                                        <th>Lifetime Spend</th>
+                                        <th>AOV</th>
+                                        <th>Recency</th>
+                                        <th>RFM Tier</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="ciCustomerTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ==========================================================
+                     PHASE 7 TAB 2: INVENTORY INTELLIGENCE & RESTOCK FORECASTS
+                     ========================================================== -->
+                <div id="admin-tab-inventory-intelligence" class="admin-tab-pane">
+                    <div class="admin-pane-header">
+                        <div>
+                            <h2>Inventory Intelligence &amp; Restock Prioritization</h2>
+                            <p class="admin-subtitle">Live demand velocity, stock coverage days, and automated supply chain replenishment alerts</p>
+                        </div>
+                        <span class="badge-pill-academic" style="background:rgba(245,158,11,0.15); color:#fbbf24; border-color:rgba(245,158,11,0.3);">Phase 7: Inventory Intelligence</span>
+                    </div>
+
+                    <!-- Inventory KPIs -->
+                    <div class="admin-kpi-grid">
+                        <div class="kpi-card">
+                            <span class="kpi-label">Total Catalog SKUs</span>
+                            <h3 class="kpi-val" id="invKpiTotalSkus">--</h3>
+                            <span class="kpi-sub">Active product catalog</span>
+                        </div>
+                        <div class="kpi-card">
+                            <span class="kpi-label">Critical Restock Needed</span>
+                            <h3 class="kpi-val" id="invKpiCritical" style="color:#f43f5e;">--</h3>
+                            <span class="kpi-sub">Coverage &le; 150 days / Low stock</span>
+                        </div>
+                        <div class="kpi-card">
+                            <span class="kpi-label">Low Stock (Watchlist)</span>
+                            <h3 class="kpi-val" id="invKpiLowStock" style="color:#fbbf24;">--</h3>
+                            <span class="kpi-sub">Coverage &le; 300 days</span>
+                        </div>
+                        <div class="kpi-card">
+                            <span class="kpi-label">Healthy Supply</span>
+                            <h3 class="kpi-val" id="invKpiHealthy" style="color:#34d399;">--</h3>
+                            <span class="kpi-sub">Balanced stock cover</span>
+                        </div>
+                        <div class="kpi-card">
+                            <span class="kpi-label">Total Inventory Valuation</span>
+                            <h3 class="kpi-val" id="invKpiValuation">$--</h3>
+                            <span class="kpi-sub">Catalog stock asset value</span>
+                        </div>
+                    </div>
+
+                    <!-- Automated Restock Recommendations Section -->
+                    <div class="admin-card">
+                        <div class="admin-pane-header" style="margin-bottom:1rem;">
+                            <div>
+                                <h3>Restock Priority Recommendations</h3>
+                                <p class="view-intro">Autonomous replenishment actions derived from current stock levels and daily sales velocity ($v = \text{sold} / \Delta t$).</p>
+                            </div>
+                            <span class="badge-pill-light" id="invRestockCountBadge">-- Action Items</span>
+                        </div>
+                        <div class="restock-grid" id="invRestockGrid"></div>
+                    </div>
+
+                    <!-- Full Inventory Matrix Table -->
+                    <div class="admin-card">
+                        <div class="ci-table-controls-row">
+                            <div>
+                                <h3>Inventory Velocity &amp; Stock Coverage Matrix</h3>
+                                <p class="view-intro">Live tracking of units sold, daily velocity, and estimated stockout horizons.</p>
+                            </div>
+                            <div class="inv-filter-group">
+                                <select id="invRiskFilterSelect" class="admin-select" onchange="handleInvRiskFilterChange()">
+                                    <option value="ALL">All Risk States</option>
+                                    <option value="CRITICAL">Critical Restock</option>
+                                    <option value="LOW STOCK">Low Stock</option>
+                                    <option value="HEALTHY">Healthy</option>
+                                    <option value="OVERSTOCKED">Overstocked</option>
+                                    <option value="INSUFFICIENT HISTORY">Insufficient History</option>
+                                </select>
+                                <input type="text" id="invSearchInput" class="admin-search-input" placeholder="Search SKU or name..." oninput="handleInvSearchInput()">
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>SKU</th>
+                                        <th>Product Name</th>
+                                        <th>Category</th>
+                                        <th>Price</th>
+                                        <th>Stock Units</th>
+                                        <th>Units Sold</th>
+                                        <th>Sales Velocity</th>
+                                        <th>Estimated Stock Cover</th>
+                                        <th>Inventory Risk</th>
+                                        <th>Suggested Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="invMatrixTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ==========================================================
+                     PHASE 7 TAB 3: PRODUCT INTELLIGENCE & MATRIX
+                     ========================================================== -->
+                <div id="admin-tab-product-intelligence" class="admin-tab-pane">
+                    <div class="admin-pane-header">
+                        <div>
+                            <h2>Product Intelligence &amp; Performance Matrix</h2>
+                            <p class="admin-subtitle">Multi-dimensional catalog ranking blending revenue volume, customer satisfaction, and companion affinity</p>
+                        </div>
+                        <span class="badge-pill-academic" style="background:rgba(14,165,233,0.15); color:#38bdf8; border-color:rgba(14,165,233,0.3);">Phase 7: Product Intelligence</span>
+                    </div>
+
+                    <div class="admin-kpi-grid">
+                        <div class="kpi-card">
+                            <span class="kpi-label">#1 Revenue Driver</span>
+                            <h3 class="kpi-val" id="prodKpiTopRevenue" style="font-size:1.1rem; line-height:1.3;">--</h3>
+                            <span class="kpi-sub" id="prodKpiTopRevenueVal">$--</span>
+                        </div>
+                        <div class="kpi-card">
+                            <span class="kpi-label">#1 Volume Leader</span>
+                            <h3 class="kpi-val" id="prodKpiTopVolume" style="font-size:1.1rem; line-height:1.3;">--</h3>
+                            <span class="kpi-sub" id="prodKpiTopVolumeVal">-- units sold</span>
+                        </div>
+                        <div class="kpi-card">
+                            <span class="kpi-label">Highest Rated SKU</span>
+                            <h3 class="kpi-val" id="prodKpiTopRating" style="font-size:1.1rem; line-height:1.3;">--</h3>
+                            <span class="kpi-sub" id="prodKpiTopRatingVal">⭐ 5.0 Rating</span>
+                        </div>
+                        <div class="kpi-card">
+                            <span class="kpi-label">Top Co-Purchase Pair</span>
+                            <h3 class="kpi-val" id="prodKpiTopPair" style="font-size:1.1rem; line-height:1.3;">--</h3>
+                            <span class="kpi-sub" id="prodKpiTopPairVal">-- co-purchases</span>
+                        </div>
+                    </div>
+
+                    <!-- Product Matrix Table -->
+                    <div class="admin-card">
+                        <div class="ci-table-controls-row">
+                            <h3>Catalog Commercial Matrix</h3>
+                            <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                                <select id="prodCategoryFilterSelect" class="admin-select" onchange="handleProdFilterChange()"></select>
+                                <input type="text" id="prodSearchInput" class="admin-search-input" placeholder="Search product..." oninput="handleProdFilterChange()">
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Rev Rank</th>
+                                        <th>Vol Rank</th>
+                                        <th>SKU</th>
+                                        <th>Product Name</th>
+                                        <th>Category</th>
+                                        <th>Price</th>
+                                        <th>Stock</th>
+                                        <th>Units Sold</th>
+                                        <th>Gross Revenue</th>
+                                        <th>Velocity</th>
+                                        <th>Rating</th>
+                                        <th>Risk State</th>
+                                        <th>Top Companion SKU</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="prodMatrixTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ==========================================================
+                     PHASE 7 TAB 4: AI BUSINESS INSIGHTS
+                     ========================================================== -->
+                <div id="admin-tab-ai-insights" class="admin-tab-pane">
+                    <div class="admin-pane-header">
+                        <div>
+                            <h2>AI Business Insights &amp; Strategic Briefing</h2>
+                            <p class="admin-subtitle">Autonomous, actionable business insights calculated directly from database transactions, RFM cohorts, and inventory dynamics</p>
+                        </div>
+                        <span class="badge-pill-academic" style="background:rgba(16,185,129,0.15); color:#34d399; border-color:rgba(16,185,129,0.3);">Phase 7: Actionable BI</span>
+                    </div>
+
+                    <!-- Category filter buttons -->
+                    <div class="insights-filter-bar">
+                        <button class="insight-filter-btn active" data-insight-cat="ALL" onclick="filterAiInsights('ALL')">All Insights</button>
+                        <button class="insight-filter-btn" data-insight-cat="REVENUE_DISTRIBUTION" onclick="filterAiInsights('REVENUE_DISTRIBUTION')">Revenue Distribution</button>
+                        <button class="insight-filter-btn" data-insight-cat="INVENTORY_ALERT" onclick="filterAiInsights('INVENTORY_ALERT')">Inventory Alerts</button>
+                        <button class="insight-filter-btn" data-insight-cat="CUSTOMER_LIFETIME_VALUE" onclick="filterAiInsights('CUSTOMER_LIFETIME_VALUE')">Customer LTV</button>
+                        <button class="insight-filter-btn" data-insight-cat="PRODUCT_OPPORTUNITY" onclick="filterAiInsights('PRODUCT_OPPORTUNITY')">Catalog Opportunities</button>
+                        <button class="insight-filter-btn" data-insight-cat="BASKET_SYNERGY" onclick="filterAiInsights('BASKET_SYNERGY')">Market Basket</button>
+                        <button class="insight-filter-btn" data-insight-cat="CAPITAL_EFFICIENCY" onclick="filterAiInsights('CAPITAL_EFFICIENCY')">Capital Efficiency</button>
+                    </div>
+
+                    <!-- Insights Cards Grid -->
+                    <div class="insights-grid" id="aiInsightsGrid"></div>
                 </div>
 
                 <!-- 2. ADMIN PRODUCTS & INVENTORY -->

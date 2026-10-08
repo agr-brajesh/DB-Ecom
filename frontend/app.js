@@ -1962,12 +1962,20 @@ function switchAdminTab(tabName) {
     // Load data for the selected admin tab
     if (tabName === "dashboard") {
         loadAdminOverview();
+    } else if (tabName === "customer-intelligence") {
+        loadAdminCustomerIntelligence();
+    } else if (tabName === "inventory-intelligence") {
+        loadAdminInventoryIntelligence();
+    } else if (tabName === "product-intelligence") {
+        loadAdminProductIntelligence();
+    } else if (tabName === "ai-insights") {
+        loadAdminAiInsights();
     } else if (tabName === "inventory") {
         renderAdminInventory();
     } else if (tabName === "orders") {
         loadAdminOrders();
     } else if (tabName === "customers") {
-        renderAdminCustomers();
+        loadAdminCustomerIntelligence();
     } else if (tabName === "rules") {
         initXaiAuditorControls();
         runXaiAudit();
@@ -2616,8 +2624,740 @@ async function runXaiAudit() {
     }
 }
 
-// Window bindings
+// =============================================================================
+// PHASE 7: BUSINESS INTELLIGENCE (CUSTOMER, INVENTORY, PRODUCT & AI INSIGHTS)
+// =============================================================================
+
+// State Variables for Phase 7
+let ciData = null;
+let activeCiSegmentFilter = "ALL";
+let ciSearchTerm = "";
+
+let invData = null;
+let activeInvRiskFilter = "ALL";
+let invSearchTerm = "";
+
+let prodData = null;
+let activeProdCategoryFilter = "ALL";
+let prodSearchTerm = "";
+
+let aiInsightsData = null;
+let activeInsightCategoryFilter = "ALL";
+
+// Helper color palette for segments
+const segmentColorMap = {
+    "HIGH VALUE": "#8b5cf6",
+    "FREQUENT SHOPPER": "#0ea5e9",
+    "ACTIVE SHOPPER": "#10b981",
+    "OCCASIONAL SHOPPER": "#f59e0b",
+    "NEW CUSTOMER": "#3b82f6",
+    "AT-RISK / INACTIVE": "#f43f5e"
+};
+
+// -----------------------------------------------------------------------------
+// 1. CUSTOMER INTELLIGENCE & RFM SEGMENTATION
+// -----------------------------------------------------------------------------
+
+async function loadAdminCustomerIntelligence() {
+    try {
+        const res = await fetch(`${API_BASE}/api/admin/customer-segments`);
+        const json = await res.json();
+        if (json.status !== "success") return;
+
+        ciData = json;
+        const ov = json.overall_metrics;
+
+        // Populate KPIs
+        const elTotal = document.getElementById("ciKpiTotalCustomers");
+        const elActive = document.getElementById("ciKpiActiveShoppers");
+        const elAvgSpend = document.getElementById("ciKpiAvgSpend");
+        const elAov = document.getElementById("ciKpiStoreAov");
+        const elFreq = document.getElementById("ciKpiAvgFreq");
+
+        if (elTotal) elTotal.innerText = ov.total_customers || 0;
+        if (elActive) elActive.innerText = ov.active_shoppers || 0;
+        if (elAvgSpend) elAvgSpend.innerText = formatMoney(ov.avg_spend_per_customer || 0);
+        if (elAov) elAov.innerText = formatMoney(ov.overall_aov || 0);
+        if (elFreq) elFreq.innerText = `${ov.avg_order_frequency || 0} orders`;
+
+        // Render Visual Distribution Bar & Pills
+        renderCiVisualBarAndPills();
+
+        // Render Segment Breakdown Cards
+        renderCiSegmentCards();
+
+        // Populate Customer Inspector Dropdown
+        const sel = document.getElementById("ciCustomerSelect");
+        if (sel) {
+            sel.innerHTML = json.customers.map(c => `
+                <option value="${c.customer_id}">${c.customer_id} &bull; ${escapeHtml(c.name)} (${c.segment})</option>
+            `).join("");
+
+            // Inspect first customer automatically
+            if (json.customers.length > 0) {
+                inspectCustomerBi(json.customers[0].customer_id);
+            }
+        }
+
+        // Render Customers Table
+        renderCiCustomerTable();
+
+    } catch (err) {
+        console.error("Error loading Customer Intelligence:", err);
+    }
+}
+
+function renderCiVisualBarAndPills() {
+    if (!ciData) return;
+    const barWrap = document.getElementById("ciSegmentVisualBar");
+    const pillsWrap = document.getElementById("ciSegmentFilterPills");
+
+    // Visual Distribution Bar
+    if (barWrap) {
+        barWrap.innerHTML = ciData.segment_breakdown.map(s => {
+            if (s.count === 0) return "";
+            const color = segmentColorMap[s.segment] || "#6366f1";
+            return `
+                <div class="segment-bar-slice" 
+                     style="width:${s.percentage}%; background-color:${color};" 
+                     title="${s.segment}: ${s.count} customers (${s.percentage}%)"
+                     onclick="filterCiCustomersBySegment('${s.segment}')"></div>
+            `;
+        }).join("");
+    }
+
+    // Segment Filter Pills
+    if (pillsWrap) {
+        let pillsHtml = `
+            <button class="seg-pill ${activeCiSegmentFilter === 'ALL' ? 'active' : ''}" 
+                    onclick="filterCiCustomersBySegment('ALL')">
+                All Customers (${ciData.customers.length})
+            </button>
+        `;
+        pillsHtml += ciData.segment_breakdown.map(s => `
+            <button class="seg-pill ${activeCiSegmentFilter === s.segment ? 'active' : ''}" 
+                    onclick="filterCiCustomersBySegment('${s.segment}')">
+                ${s.segment} (${s.count})
+            </button>
+        `).join("");
+        pillsWrap.innerHTML = pillsHtml;
+    }
+}
+
+function renderCiSegmentCards() {
+    if (!ciData) return;
+    const grid = document.getElementById("ciSegmentCardsGrid");
+    if (!grid) return;
+
+    grid.innerHTML = ciData.segment_breakdown.map(s => {
+        const color = segmentColorMap[s.segment] || "#6366f1";
+        const isActive = activeCiSegmentFilter === s.segment ? "active" : "";
+        return `
+            <div class="segment-card ${isActive}" onclick="filterCiCustomersBySegment('${s.segment}')">
+                <div class="segment-card-header">
+                    <span class="segment-card-title" style="color:${color};">${s.segment}</span>
+                    <span class="${s.badge_class}">${s.percentage}%</span>
+                </div>
+                <div class="segment-card-count">${s.count}</div>
+                <div class="segment-card-sub">
+                    <span>Avg Spend: <strong>${formatMoney(s.avg_spend)}</strong></span>
+                    <span>Avg Orders: <strong>${s.avg_orders}</strong> &bull; AOV: <strong>${formatMoney(s.aov)}</strong></span>
+                </div>
+            </div>
+        `;
+    }).join("");
+}
+
+function filterCiCustomersBySegment(segmentName) {
+    activeCiSegmentFilter = segmentName;
+    renderCiVisualBarAndPills();
+    renderCiSegmentCards();
+    renderCiCustomerTable();
+}
+
+function handleCiSearchInput() {
+    const input = document.getElementById("ciCustomerSearchInput");
+    ciSearchTerm = input ? input.value.trim().toLowerCase() : "";
+    renderCiCustomerTable();
+}
+
+function renderCiCustomerTable() {
+    if (!ciData) return;
+    const tbody = document.getElementById("ciCustomerTableBody");
+    if (!tbody) return;
+
+    let filtered = ciData.customers.filter(c => {
+        const matchesSeg = (activeCiSegmentFilter === "ALL" || c.segment === activeCiSegmentFilter);
+        const matchesSearch = !ciSearchTerm || 
+            c.name.toLowerCase().includes(ciSearchTerm) ||
+            c.customer_id.toLowerCase().includes(ciSearchTerm) ||
+            (c.city && c.city.toLowerCase().includes(ciSearchTerm));
+        return matchesSeg && matchesSearch;
+    });
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:2rem; color:var(--text-muted);">No customers match the active segment or search filter.</td></tr>`;
+        return;
+    }
+
+    const badgeMap = {
+        "HIGH VALUE": "badge-high-value",
+        "FREQUENT SHOPPER": "badge-frequent",
+        "ACTIVE SHOPPER": "badge-active",
+        "OCCASIONAL SHOPPER": "badge-occasional",
+        "NEW CUSTOMER": "badge-new",
+        "AT-RISK / INACTIVE": "badge-inactive"
+    };
+
+    tbody.innerHTML = filtered.map(c => {
+        const bClass = badgeMap[c.segment] || "badge-default";
+        const recText = c.recency_days !== null ? `${c.recency_days}d ago` : "Never";
+        return `
+            <tr>
+                <td><strong>${c.customer_id}</strong></td>
+                <td>
+                    <div style="font-weight:600; color:var(--text-primary);">${escapeHtml(c.name)}</div>
+                    <div style="font-size:0.75rem; color:var(--text-muted);">${escapeHtml(c.email)}</div>
+                </td>
+                <td>${escapeHtml(c.city || 'Seattle')}</td>
+                <td><span class="${bClass}">${c.segment}</span></td>
+                <td><strong>${c.total_orders}</strong></td>
+                <td><strong>${formatMoney(c.lifetime_spend)}</strong></td>
+                <td>${formatMoney(c.aov)}</td>
+                <td>${recText}</td>
+                <td><span style="font-family:monospace; font-weight:700; color:#818cf8;">${c.rfm_scores.rfm_tier}</span></td>
+                <td>
+                    <button class="btn-secondary" style="padding:0.25rem 0.6rem; font-size:0.75rem;" onclick="inspectCustomerBi('${c.customer_id}')">
+                        Inspect &rarr;
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join("");
+}
+
+function handleCiCustomerSelectChange() {
+    const sel = document.getElementById("ciCustomerSelect");
+    if (sel && sel.value) {
+        inspectCustomerBi(sel.value);
+    }
+}
+
+async function inspectCustomerBi(customerId) {
+    const container = document.getElementById("ciCustomerDetailContent");
+    if (!container) return;
+
+    container.innerHTML = `<div style="text-align:center; padding:2rem; color:var(--text-muted);">Loading customer insights for ${customerId}...</div>`;
+
+    // Sync select element if needed
+    const sel = document.getElementById("ciCustomerSelect");
+    if (sel && sel.value !== customerId) {
+        sel.value = customerId;
+    }
+
+    try {
+        const res = await fetch(`${API_BASE}/api/admin/customer/${customerId}/insights`);
+        const json = await res.json();
+        if (json.status !== "success") {
+            container.innerHTML = `<div style="color:var(--accent-rose); padding:1rem;">Error: ${json.message || 'Could not fetch customer details'}</div>`;
+            return;
+        }
+
+        const c = json.customer;
+        const initials = c.name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase();
+        const badgeMap = {
+            "HIGH VALUE": "badge-high-value",
+            "FREQUENT SHOPPER": "badge-frequent",
+            "ACTIVE SHOPPER": "badge-active",
+            "OCCASIONAL SHOPPER": "badge-occasional",
+            "NEW CUSTOMER": "badge-new",
+            "AT-RISK / INACTIVE": "badge-inactive"
+        };
+        const bClass = badgeMap[c.segment] || "badge-default";
+        const recText = c.recency_days !== null ? `${c.recency_days} days ago` : "Never ordered";
+
+        container.innerHTML = `
+            <div class="ci-detail-grid">
+                <!-- Left: Profile & Key Scores -->
+                <div class="ci-profile-card">
+                    <div class="ci-profile-top">
+                        <div class="ci-avatar">${initials}</div>
+                        <div>
+                            <h3 style="font-size:1.1rem; font-weight:700; color:var(--text-primary);">${escapeHtml(c.name)}</h3>
+                            <div style="font-size:0.78rem; color:var(--text-muted);">${c.customer_id} &bull; ${escapeHtml(c.city || 'Seattle')}</div>
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom:0.85rem;">
+                        <span class="${bClass}" style="font-size:0.85rem; padding:0.35rem 0.75rem;">${c.segment}</span>
+                    </div>
+
+                    <div class="ci-rfm-chip-row">
+                        <div class="ci-rfm-chip">
+                            <span>Recency (R)</span>
+                            <strong>${c.rfm_scores.recency_score}/5</strong>
+                        </div>
+                        <div class="ci-rfm-chip">
+                            <span>Frequency (F)</span>
+                            <strong>${c.rfm_scores.frequency_score}/5</strong>
+                        </div>
+                        <div class="ci-rfm-chip">
+                            <span>Monetary (M)</span>
+                            <strong>${c.rfm_scores.monetary_score}/5</strong>
+                        </div>
+                        <div class="ci-rfm-chip" style="border-color:#818cf8;">
+                            <span>Composite</span>
+                            <strong>${c.rfm_scores.composite_score}</strong>
+                        </div>
+                    </div>
+
+                    <div style="font-size:0.82rem; display:flex; flex-direction:column; gap:0.4rem; padding-top:0.5rem; border-top:1px solid var(--border-subtle);">
+                        <div style="display:flex; justify-content:space-between;">
+                            <span style="color:var(--text-muted);">Lifetime Spend:</span>
+                            <strong>${formatMoney(c.lifetime_spend)}</strong>
+                        </div>
+                        <div style="display:flex; justify-content:space-between;">
+                            <span style="color:var(--text-muted);">Completed Orders:</span>
+                            <strong>${c.total_orders} orders</strong>
+                        </div>
+                        <div style="display:flex; justify-content:space-between;">
+                            <span style="color:var(--text-muted);">Average Order Value:</span>
+                            <strong>${formatMoney(c.aov)}</strong>
+                        </div>
+                        <div style="display:flex; justify-content:space-between;">
+                            <span style="color:var(--text-muted);">Last Purchase:</span>
+                            <strong>${recText}</strong>
+                        </div>
+                        <div style="display:flex; justify-content:space-between;">
+                            <span style="color:var(--text-muted);">Cart / Wishlist:</span>
+                            <span>${c.cart_items_count} in cart / ${c.wishlist_items_count} saved</span>
+                        </div>
+                    </div>
+
+                    <div class="ci-action-callout">
+                        <h4>Recommended Business Action</h4>
+                        <p>${escapeHtml(c.suggested_action)}</p>
+                    </div>
+                </div>
+
+                <!-- Right: Proof Explanations & Commerce Activity -->
+                <div>
+                    <!-- Why Classified Here -->
+                    <div class="ci-proofs-card">
+                        <h4>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                            Why Classified in "${c.segment}":
+                        </h4>
+                        <div class="ci-proof-list">
+                            ${c.reasons.map(r => `
+                                <div class="ci-proof-item">
+                                    <span class="ci-proof-check">&#10003;</span>
+                                    <span>${escapeHtml(r)}</span>
+                                </div>
+                            `).join("")}
+                        </div>
+                    </div>
+
+                    <!-- Mini Grid: Top Categories & Top Products -->
+                    <div class="ci-mini-card-grid">
+                        <div class="ci-mini-box">
+                            <h4>Top Categories</h4>
+                            ${c.top_categories.length === 0 ? '<p style="color:var(--text-muted); font-size:0.78rem;">No purchase history.</p>' : 
+                                c.top_categories.map(cat => `
+                                    <div class="ci-mini-row">
+                                        <span>${escapeHtml(cat.category_name)}</span>
+                                        <strong>${formatMoney(cat.category_spend)}</strong>
+                                    </div>
+                                `).join("")}
+                        </div>
+
+                        <div class="ci-mini-box">
+                            <h4>Top Purchased Products</h4>
+                            ${c.top_products.length === 0 ? '<p style="color:var(--text-muted); font-size:0.78rem;">No purchase history.</p>' : 
+                                c.top_products.map(p => `
+                                    <div class="ci-mini-row">
+                                        <span style="max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escapeHtml(p.product_name)}">${escapeHtml(p.product_name)}</span>
+                                        <strong>${p.total_quantity}x (${formatMoney(p.total_spend)})</strong>
+                                    </div>
+                                `).join("")}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+    } catch (err) {
+        console.error("Error inspecting customer:", err);
+        container.innerHTML = `<div style="color:var(--accent-rose); padding:1rem;">Failed to load customer profile: ${escapeHtml(err.message)}</div>`;
+    }
+}
+
+// -----------------------------------------------------------------------------
+// 2. INVENTORY INTELLIGENCE & RESTOCK FORECASTS
+// -----------------------------------------------------------------------------
+
+async function loadAdminInventoryIntelligence() {
+    try {
+        const res = await fetch(`${API_BASE}/api/admin/inventory-intelligence?recent_days=30`);
+        const json = await res.json();
+        if (json.status !== "success") return;
+
+        invData = json;
+        const k = json.kpis;
+
+        // Populate KPIs
+        const elSkus = document.getElementById("invKpiTotalSkus");
+        const elCrit = document.getElementById("invKpiCritical");
+        const elLow = document.getElementById("invKpiLowStock");
+        const elHealthy = document.getElementById("invKpiHealthy");
+        const elVal = document.getElementById("invKpiValuation");
+
+        if (elSkus) elSkus.innerText = k.total_skus || 0;
+        if (elCrit) elCrit.innerText = k.critical_count || 0;
+        if (elLow) elLow.innerText = k.low_stock_count || 0;
+        if (elHealthy) elHealthy.innerText = k.healthy_count || 0;
+        if (elVal) elVal.innerText = formatMoney(k.inventory_valuation || 0);
+
+        // Render Restock Priority Grid
+        renderInvRestockGrid();
+
+        // Render Matrix Table
+        renderInvMatrixTable();
+
+    } catch (err) {
+        console.error("Error loading Inventory Intelligence:", err);
+    }
+}
+
+function renderInvRestockGrid() {
+    if (!invData) return;
+    const grid = document.getElementById("invRestockGrid");
+    const countBadge = document.getElementById("invRestockCountBadge");
+    if (!grid) return;
+
+    const recs = invData.restock_recommendations || [];
+    if (countBadge) {
+        countBadge.innerText = `${recs.length} Action Items`;
+    }
+
+    if (recs.length === 0) {
+        grid.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:2rem; color:var(--text-muted); background:var(--bg-surface-elevated); border-radius:var(--radius-md);">All product inventory levels are currently in a healthy state.</div>`;
+        return;
+    }
+
+    grid.innerHTML = recs.slice(0, 6).map(r => {
+        const cardClass = r.risk_state === "CRITICAL" || r.risk_state === "OUT OF STOCK" ? "critical" : "low";
+        const coverStr = r.estimated_stock_cover_days !== null ? `~${Math.round(r.estimated_stock_cover_days)} days` : "0 days";
+        return `
+            <div class="restock-card ${cardClass}">
+                <div>
+                    <div class="restock-card-top">
+                        <div>
+                            <span class="restock-card-category">${escapeHtml(r.category_name)} &bull; SKU: ${r.product_id}</span>
+                            <h4 class="restock-card-title">${escapeHtml(r.product_name)}</h4>
+                        </div>
+                        <span class="risk-badge risk-${r.risk_state.toLowerCase().replace(/ /g, '-')}">${r.risk_label}</span>
+                    </div>
+
+                    <div class="restock-metrics-row">
+                        <div class="restock-metric-item">
+                            <span>Stock</span>
+                            <strong>${r.stock_quantity}</strong>
+                        </div>
+                        <div class="restock-metric-item">
+                            <span>Velocity</span>
+                            <strong>${r.avg_daily_sales}/day</strong>
+                        </div>
+                        <div class="restock-metric-item">
+                            <span>Est. Cover</span>
+                            <strong style="color:${r.risk_state === 'CRITICAL' ? '#f43f5e' : '#f59e0b'};">${coverStr}</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="restock-action-box">
+                    <div style="font-weight:700; color:#e2e8f0; margin-bottom:0.25rem;">Suggested Action:</div>
+                    <div>${escapeHtml(r.suggested_action)}</div>
+                </div>
+            </div>
+        `;
+    }).join("");
+}
+
+function handleInvRiskFilterChange() {
+    const sel = document.getElementById("invRiskFilterSelect");
+    activeInvRiskFilter = sel ? sel.value : "ALL";
+    renderInvMatrixTable();
+}
+
+function handleInvSearchInput() {
+    const input = document.getElementById("invSearchInput");
+    invSearchTerm = input ? input.value.trim().toLowerCase() : "";
+    renderInvMatrixTable();
+}
+
+function renderInvMatrixTable() {
+    if (!invData) return;
+    const tbody = document.getElementById("invMatrixTableBody");
+    if (!tbody) return;
+
+    let filtered = invData.inventory_matrix.filter(p => {
+        const matchesRisk = (activeInvRiskFilter === "ALL" || p.risk_state === activeInvRiskFilter);
+        const matchesSearch = !invSearchTerm ||
+            p.product_name.toLowerCase().includes(invSearchTerm) ||
+            p.product_id.toLowerCase().includes(invSearchTerm) ||
+            p.category_name.toLowerCase().includes(invSearchTerm);
+        return matchesRisk && matchesSearch;
+    });
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:2rem; color:var(--text-muted);">No products match the active inventory filters.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = filtered.map(p => {
+        const riskClass = `risk-${p.risk_state.toLowerCase().replace(/ /g, '-')}`;
+        const coverStr = p.estimated_stock_cover_days !== null ? `~${Math.round(p.estimated_stock_cover_days)} days` : "N/A";
+        return `
+            <tr>
+                <td><strong>${p.product_id}</strong></td>
+                <td>
+                    <div style="font-weight:600; color:var(--text-primary);">${escapeHtml(p.product_name)}</div>
+                    <div style="font-size:0.72rem; color:var(--text-muted);">${escapeHtml(p.brand || '')}</div>
+                </td>
+                <td>${escapeHtml(p.category_name)}</td>
+                <td><strong>${formatMoney(p.price)}</strong></td>
+                <td><strong style="font-size:0.95rem;">${p.stock_quantity}</strong></td>
+                <td>${p.units_sold} units</td>
+                <td><strong>${p.avg_daily_sales}</strong> /day</td>
+                <td><span style="color:#818cf8; font-weight:600;">${coverStr}</span></td>
+                <td><span class="risk-badge ${riskClass}">${p.risk_state}</span></td>
+                <td style="font-size:0.78rem; max-width:240px; color:var(--text-secondary);">${escapeHtml(p.suggested_action)}</td>
+            </tr>
+        `;
+    }).join("");
+}
+
+// -----------------------------------------------------------------------------
+// 3. PRODUCT INTELLIGENCE & MATRIX
+// -----------------------------------------------------------------------------
+
+async function loadAdminProductIntelligence() {
+    try {
+        const res = await fetch(`${API_BASE}/api/admin/product-intelligence`);
+        const json = await res.json();
+        if (json.status !== "success") return;
+
+        prodData = json;
+        const prods = json.products;
+
+        // KPI calculations
+        if (prods.length > 0) {
+            const topRev = [...prods].sort((a, b) => b.revenue - a.revenue)[0];
+            const topVol = [...prods].sort((a, b) => b.units_sold - a.units_sold)[0];
+            const topRat = [...prods].sort((a, b) => (b.avg_rating || 0) - (a.avg_rating || 0))[0];
+
+            const elRev = document.getElementById("prodKpiTopRevenue");
+            const elRevVal = document.getElementById("prodKpiTopRevenueVal");
+            const elVol = document.getElementById("prodKpiTopVolume");
+            const elVolVal = document.getElementById("prodKpiTopVolumeVal");
+            const elRat = document.getElementById("prodKpiTopRating");
+            const elRatVal = document.getElementById("prodKpiTopRatingVal");
+            const elPair = document.getElementById("prodKpiTopPair");
+            const elPairVal = document.getElementById("prodKpiTopPairVal");
+
+            if (elRev && topRev) {
+                elRev.innerText = topRev.product_name;
+                if (elRevVal) elRevVal.innerText = `${formatMoney(topRev.revenue)} gross sales`;
+            }
+            if (elVol && topVol) {
+                elVol.innerText = topVol.product_name;
+                if (elVolVal) elVolVal.innerText = `${topVol.units_sold} units sold`;
+            }
+            if (elRat && topRat) {
+                elRat.innerText = topRat.product_name;
+                if (elRatVal) elRatVal.innerText = `⭐ ${topRat.avg_rating} (${topRat.review_count} reviews)`;
+            }
+
+            // Find top companion pair
+            const withCompanion = prods.filter(p => p.top_companion);
+            if (withCompanion.length > 0 && elPair) {
+                const topP = withCompanion.sort((a, b) => (b.top_companion.co_purchases || 0) - (a.top_companion.co_purchases || 0))[0];
+                elPair.innerText = `${topP.product_id} & ${topP.top_companion.companion_id}`;
+                if (elPairVal) elPairVal.innerText = `${topP.top_companion.co_purchases} co-purchases`;
+            }
+        }
+
+        // Category filter dropdown
+        const catSelect = document.getElementById("prodCategoryFilterSelect");
+        if (catSelect) {
+            const uniqueCats = Array.from(new Set(prods.map(p => p.category_name)));
+            catSelect.innerHTML = `<option value="ALL">All Categories (${prods.length})</option>` +
+                uniqueCats.map(c => `<option value="${c}">${c}</option>`).join("");
+        }
+
+        // Render Matrix Table
+        renderProdMatrixTable();
+
+    } catch (err) {
+        console.error("Error loading Product Intelligence:", err);
+    }
+}
+
+function handleProdFilterChange() {
+    const catSelect = document.getElementById("prodCategoryFilterSelect");
+    const searchInput = document.getElementById("prodSearchInput");
+
+    activeProdCategoryFilter = catSelect ? catSelect.value : "ALL";
+    prodSearchTerm = searchInput ? searchInput.value.trim().toLowerCase() : "";
+
+    renderProdMatrixTable();
+}
+
+function renderProdMatrixTable() {
+    if (!prodData) return;
+    const tbody = document.getElementById("prodMatrixTableBody");
+    if (!tbody) return;
+
+    let filtered = prodData.products.filter(p => {
+        const matchesCat = (activeProdCategoryFilter === "ALL" || p.category_name === activeProdCategoryFilter);
+        const matchesSearch = !prodSearchTerm ||
+            p.product_name.toLowerCase().includes(prodSearchTerm) ||
+            p.product_id.toLowerCase().includes(prodSearchTerm) ||
+            p.brand.toLowerCase().includes(prodSearchTerm);
+        return matchesCat && matchesSearch;
+    });
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="13" style="text-align:center; padding:2rem; color:var(--text-muted);">No products match the filter criteria.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = filtered.map(p => {
+        const riskClass = `risk-${p.risk_state.toLowerCase().replace(/ /g, '-')}`;
+        const companionHtml = p.top_companion ? 
+            `<span style="color:#38bdf8; font-size:0.75rem;" title="${escapeHtml(p.top_companion.companion_name)}">${p.top_companion.companion_id} (${p.top_companion.co_purchases}x)</span>` : 
+            `<span style="color:var(--text-muted); font-size:0.75rem;">None</span>`;
+
+        return `
+            <tr>
+                <td><strong style="color:#818cf8;">#${p.revenue_rank || '-'}</strong></td>
+                <td><span style="color:var(--text-muted);">#${p.volume_rank || '-'}</span></td>
+                <td><strong>${p.product_id}</strong></td>
+                <td>
+                    <div style="font-weight:600; color:var(--text-primary); max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escapeHtml(p.product_name)}">${escapeHtml(p.product_name)}</div>
+                    <div style="font-size:0.72rem; color:var(--text-muted);">${escapeHtml(p.brand || '')}</div>
+                </td>
+                <td>${escapeHtml(p.category_name)}</td>
+                <td><strong>${formatMoney(p.price)}</strong></td>
+                <td>${p.stock_quantity}</td>
+                <td><strong>${p.units_sold}</strong></td>
+                <td><strong style="color:#34d399;">${formatMoney(p.revenue)}</strong></td>
+                <td>${p.avg_daily_sales}/day</td>
+                <td>⭐ ${p.avg_rating} <span style="color:var(--text-muted); font-size:0.72rem;">(${p.review_count})</span></td>
+                <td><span class="risk-badge ${riskClass}">${p.risk_state}</span></td>
+                <td>${companionHtml}</td>
+            </tr>
+        `;
+    }).join("");
+}
+
+// -----------------------------------------------------------------------------
+// 4. AI BUSINESS INSIGHTS
+// -----------------------------------------------------------------------------
+
+async function loadAdminAiInsights() {
+    try {
+        const res = await fetch(`${API_BASE}/api/admin/ai-insights`);
+        const json = await res.json();
+        if (json.status !== "success") return;
+
+        aiInsightsData = json;
+        renderAiInsightsGrid();
+
+    } catch (err) {
+        console.error("Error loading AI Business Insights:", err);
+    }
+}
+
+function filterAiInsights(cat) {
+    activeInsightCategoryFilter = cat;
+    document.querySelectorAll(".insight-filter-btn").forEach(btn => {
+        btn.classList.toggle("active", btn.dataset.insightCat === cat);
+    });
+    renderAiInsightsGrid();
+}
+
+function renderAiInsightsGrid() {
+    if (!aiInsightsData) return;
+    const grid = document.getElementById("aiInsightsGrid");
+    if (!grid) return;
+
+    let filtered = aiInsightsData.insights.filter(i => {
+        return activeInsightCategoryFilter === "ALL" || i.category === activeInsightCategoryFilter;
+    });
+
+    if (filtered.length === 0) {
+        grid.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:2.5rem; color:var(--text-muted); background:var(--bg-surface-elevated); border-radius:var(--radius-md);">No insights available under the "${activeInsightCategoryFilter}" category.</div>`;
+        return;
+    }
+
+    grid.innerHTML = filtered.map(item => {
+        const typeClass = `type-${item.type.toLowerCase()}`;
+
+        // Render metrics pills
+        let pillsHtml = "";
+        if (item.metrics) {
+            pillsHtml = Object.entries(item.metrics).map(([k, v]) => {
+                const label = k.replace(/_/g, ' ');
+                const valFormatted = typeof v === 'number' && v > 1000 ? formatMoney(v) : v;
+                return `<div class="metric-pill">${label}: <strong>${valFormatted}</strong></div>`;
+            }).join("");
+        }
+
+        return `
+            <div class="insight-card ${typeClass}">
+                <div>
+                    <div class="insight-card-header">
+                        <span class="insight-badge">${item.badge}</span>
+                        <span style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em;">${item.category.replace(/_/g, ' ')}</span>
+                    </div>
+
+                    <h3 class="insight-title">${escapeHtml(item.title)}</h3>
+                    <p class="insight-desc">${escapeHtml(item.description)}</p>
+
+                    ${pillsHtml ? `<div class="insight-metrics-pills">${pillsHtml}</div>` : ''}
+                </div>
+
+                <div class="insight-action-box">
+                    <span class="insight-action-label">Actionable Strategic Next Step</span>
+                    <p class="insight-action-text">${escapeHtml(item.action)}</p>
+                </div>
+            </div>
+        `;
+    }).join("");
+}
+
+// Window bindings for Phase 7 functions
+window.loadAdminCustomerIntelligence = loadAdminCustomerIntelligence;
+window.filterCiCustomersBySegment = filterCiCustomersBySegment;
+window.handleCiSearchInput = handleCiSearchInput;
+window.handleCiCustomerSelectChange = handleCiCustomerSelectChange;
+window.inspectCustomerBi = inspectCustomerBi;
+
+window.loadAdminInventoryIntelligence = loadAdminInventoryIntelligence;
+window.handleInvRiskFilterChange = handleInvRiskFilterChange;
+window.handleInvSearchInput = handleInvSearchInput;
+
+window.loadAdminProductIntelligence = loadAdminProductIntelligence;
+window.handleProdFilterChange = handleProdFilterChange;
+
+window.loadAdminAiInsights = loadAdminAiInsights;
+window.filterAiInsights = filterAiInsights;
+
+// Previous window bindings
 window.handleXaiContextChange = handleXaiContextChange;
 window.initXaiAuditorControls = initXaiAuditorControls;
 window.runXaiAudit = runXaiAudit;
+
 
