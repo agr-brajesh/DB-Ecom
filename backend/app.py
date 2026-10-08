@@ -17,6 +17,7 @@ sys.path.insert(0, BASE_DIR)
 from ai.recommender import ProductRecommender
 from ai.business_intelligence import BusinessIntelligenceEngine
 from ai.sentiment_analyzer import ReviewSentimentAnalyzer
+from ai.analytics_engine import AdminAnalyticsEngine
 from database.transactions import checkout_cart, get_db_connection
 
 app = Flask(__name__, static_folder=os.path.join(BASE_DIR, "frontend"), static_url_path="")
@@ -26,6 +27,7 @@ DB_PATH = os.path.join(BASE_DIR, "database", "ecommerce.db")
 recommender = ProductRecommender(DB_PATH)
 bi_engine = BusinessIntelligenceEngine(DB_PATH)
 review_analyzer = ReviewSentimentAnalyzer(DB_PATH)
+admin_analytics = AdminAnalyticsEngine(DB_PATH)
 
 
 @app.route("/")
@@ -234,69 +236,184 @@ def get_customer_orders(customer_id):
 
 @app.route("/api/admin/overview", methods=["GET"])
 def get_admin_overview():
-    conn = get_db_connection()
-    cursor = conn.cursor()
+    """
+    Phase 9 & Legacy: High-quality Admin Overview KPI Dashboard.
+    Accepts ?range=7d|30d|90d|all. Calculates real SQL metrics and genuine historical comparisons.
+    """
+    date_range = request.args.get("range", "all").strip().lower()
+    if date_range not in ("7d", "30d", "90d", "all"):
+        date_range = "all"
 
-    # 1. Total revenue & orders count
-    cursor.execute("SELECT COUNT(order_id), COALESCE(SUM(total_amount), 0.0) FROM orders WHERE order_status = 'COMPLETED';")
-    total_orders, gross_revenue = cursor.fetchone()
+    try:
+        overview_data = admin_analytics.get_overview_kpis(date_range=date_range)
+        kpis = overview_data["kpis"]
+        growth = overview_data.get("growth_comparison")
 
-    # 2. Total customers
-    cursor.execute("SELECT COUNT(customer_id) FROM customers;")
-    total_customers = cursor.fetchone()[0]
+        # Fetch recent orders and low-stock alerts for immediate action
+        conn = get_db_connection()
+        cursor = conn.cursor()
 
-    # 3. Low stock alert products (stock < 120)
-    cursor.execute("SELECT product_id, product_name, stock_quantity, price FROM products WHERE stock_quantity < 120 ORDER BY stock_quantity ASC LIMIT 10;")
-    low_stock = [{"product_id": r[0], "product_name": r[1], "stock_quantity": r[2], "price": r[3]} for r in cursor.fetchall()]
+        cursor.execute("SELECT product_id, product_name, stock_quantity, price FROM products WHERE stock_quantity < 120 ORDER BY stock_quantity ASC LIMIT 10;")
+        low_stock = [{"product_id": r[0], "product_name": r[1], "stock_quantity": r[2], "price": r[3]} for r in cursor.fetchall()]
 
-    # 4. Top 5 selling products from v_product_performance
-    cursor.execute("SELECT product_id, product_name, category_name, units_sold, total_revenue, avg_rating FROM v_product_performance ORDER BY units_sold DESC LIMIT 5;")
-    top_products = [{"product_id": r[0], "product_name": r[1], "category_name": r[2], "units_sold": r[3], "total_revenue": r[4], "avg_rating": r[5]} for r in cursor.fetchall()]
+        cursor.execute("SELECT product_id, product_name, category_name, units_sold, total_revenue, avg_rating FROM v_product_performance ORDER BY units_sold DESC LIMIT 5;")
+        top_products = [{"product_id": r[0], "product_name": r[1], "category_name": r[2], "units_sold": r[3], "total_revenue": r[4], "avg_rating": r[5]} for r in cursor.fetchall()]
 
-    # 5. Domain sales breakdown
-    cursor.execute("""
-        SELECT cat.category_name, COUNT(oi.order_item_id) as items_sold, ROUND(SUM(oi.quantity * oi.unit_price), 2) as revenue
-        FROM categories cat
-        JOIN products p ON cat.category_id = p.category_id
-        JOIN order_items oi ON p.product_id = oi.product_id
-        GROUP BY cat.category_id, cat.category_name
-        ORDER BY revenue DESC;
-    """)
-    category_sales = [{"category_name": r[0], "items_sold": r[1], "revenue": r[2]} for r in cursor.fetchall()]
+        cursor.execute("""
+            SELECT cat.category_name, COUNT(oi.order_item_id) as items_sold, ROUND(SUM(oi.quantity * oi.unit_price), 2) as revenue
+            FROM categories cat
+            JOIN products p ON cat.category_id = p.category_id
+            JOIN order_items oi ON p.product_id = oi.product_id
+            GROUP BY cat.category_id, cat.category_name
+            ORDER BY revenue DESC;
+        """)
+        category_sales = [{"category_name": r[0], "items_sold": r[1], "revenue": r[2]} for r in cursor.fetchall()]
 
-    # 6. Recent 10 orders
-    cursor.execute("""
-        SELECT o.order_id, c.name, o.order_date, o.total_amount, o.order_status, COALESCE(p.payment_method, 'CREDIT_CARD')
-        FROM orders o
-        JOIN customers c ON o.customer_id = c.customer_id
-        LEFT JOIN payments p ON o.order_id = p.order_id
-        ORDER BY o.order_date DESC LIMIT 10;
-    """)
-    recent_orders = [{
-        "order_id": r[0],
-        "customer_name": r[1],
-        "order_date": r[2],
-        "total_amount": r[3],
-        "order_status": r[4],
-        "payment_method": r[5]
-    } for r in cursor.fetchall()]
+        cursor.execute("""
+            SELECT o.order_id, c.name, o.order_date, o.total_amount, o.order_status, COALESCE(p.payment_method, 'CREDIT_CARD')
+            FROM orders o
+            JOIN customers c ON o.customer_id = c.customer_id
+            LEFT JOIN payments p ON o.order_id = p.order_id
+            ORDER BY o.order_date DESC LIMIT 10;
+        """)
+        recent_orders = [{
+            "order_id": r[0],
+            "customer_name": r[1],
+            "order_date": r[2],
+            "total_amount": r[3],
+            "order_status": r[4],
+            "payment_method": r[5]
+        } for r in cursor.fetchall()]
 
-    conn.close()
+        conn.close()
 
-    return jsonify({
-        "status": "success",
-        "overview": {
-            "gross_revenue": round(gross_revenue, 2),
-            "total_orders": total_orders,
-            "total_customers": total_customers,
+        # Legacy backward-compatible payload nested inside 'overview'
+        legacy_overview = {
+            "gross_revenue": kpis["total_revenue"],
+            "total_orders": kpis["total_orders"],
+            "total_customers": kpis["total_customers"],
+            "average_order_value": kpis["average_order_value"],
+            "products_sold": kpis["products_sold"],
+            "low_stock_products": low_stock,
             "total_products": len(recommender.miner.product_name_map),
             "total_rules": len(recommender.rules),
-            "low_stock_products": low_stock,
             "top_products": top_products,
             "category_sales": category_sales,
-            "recent_orders": recent_orders
+            "recent_orders": recent_orders,
+            "growth_comparison": growth
         }
-    })
+
+        return jsonify({
+            "status": "success",
+            "date_range": date_range,
+            "kpis": kpis,
+            "growth_comparison": growth,
+            "low_stock_alerts": low_stock,
+            "top_products": top_products,
+            "category_sales": category_sales,
+            "recent_orders": recent_orders,
+            "overview": legacy_overview
+        })
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route("/api/admin/sales-analytics", methods=["GET"])
+def get_admin_sales_analytics():
+    """
+    Phase 9: Comprehensive Sales Analytics with Timeline Buckets, Category Breakdown,
+    Payment Distributions, and Volume / Revenue Leaders.
+    """
+    date_range = request.args.get("range", "30d").strip().lower()
+    if date_range not in ("7d", "30d", "90d", "all"):
+        date_range = "30d"
+
+    try:
+        data = admin_analytics.get_sales_analytics(date_range=date_range)
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route("/api/admin/product-analytics", methods=["GET"])
+def get_admin_product_analytics_consolidated():
+    """
+    Phase 9: Consolidated Product Intelligence matrix combining commercial velocity,
+    revenue rankings, stock coverage risk, and Phase 8 review sentiment health.
+    """
+    sort_by = request.args.get("sort", "best_selling").strip().lower()
+    category_id = request.args.get("category_id")
+    if category_id:
+        try:
+            category_id = int(category_id)
+        except (ValueError, TypeError):
+            category_id = None
+
+    try:
+        data = admin_analytics.get_consolidated_product_intelligence(sort_by=sort_by, category_id=category_id)
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route("/api/admin/customer-analytics", methods=["GET"])
+def get_admin_customer_analytics():
+    """
+    Phase 9: Customer Intelligence integrating RFM segmentation, customer lifetime value,
+    and purchase activity.
+    """
+    try:
+        data = bi_engine.get_customer_segments_summary()
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route("/api/admin/inventory-analytics", methods=["GET"])
+def get_admin_inventory_analytics_alias():
+    """Phase 9: Operational Inventory Intelligence alias."""
+    try:
+        recent_days = int(request.args.get("recent_days", 30))
+        if recent_days <= 0:
+            recent_days = 30
+    except (ValueError, TypeError):
+        recent_days = 30
+
+    try:
+        data = bi_engine.get_inventory_intelligence(recent_window_days=recent_days)
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route("/api/admin/ai-analytics", methods=["GET"])
+@app.route("/api/admin/ai-recommendation-analytics", methods=["GET"])
+def get_admin_ai_recommendation_analytics():
+    """
+    Phase 9: AI Intelligence Dashboard showing Apriori association rules,
+    hybrid signal weights, active commerce intent types, and companion product frequencies.
+    """
+    try:
+        data = admin_analytics.get_ai_recommendation_analytics(recommender)
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route("/api/admin/insights", methods=["GET"])
+def get_admin_consolidated_insights():
+    """
+    Phase 9: Real-time business intelligence insights derived strictly from database queries.
+    """
+    date_range = request.args.get("range", "all").strip().lower()
+    if date_range not in ("7d", "30d", "90d", "all"):
+        date_range = "all"
+
+    try:
+        data = admin_analytics.get_business_insights(date_range=date_range)
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 
 # =============================================================================
@@ -383,6 +500,7 @@ def get_product_review_intelligence(product_id):
 
 
 @app.route("/api/admin/review-intelligence", methods=["GET"])
+@app.route("/api/admin/review-analytics", methods=["GET"])
 def get_admin_review_intelligence():
     """
     Phase 8: Catalog-wide review intelligence matrix for admin portal.

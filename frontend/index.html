@@ -768,10 +768,18 @@
             <!-- Admin Sidebar Navigation -->
             <aside class="admin-sidebar">
                 <nav class="admin-nav">
-                    <div class="admin-nav-divider" style="padding-top:0.25rem;">BUSINESS INTELLIGENCE</div>
+                    <div class="admin-nav-divider" style="padding-top:0.25rem;">BUSINESS OPERATIONS</div>
                     <button class="admin-nav-item active" data-admin-tab="dashboard" onclick="switchAdminTab('dashboard')">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-                        Dashboard Overview
+                        Overview
+                    </button>
+                    <button class="admin-nav-item" data-admin-tab="sales-analytics" onclick="switchAdminTab('sales-analytics')">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                        Sales Analytics
+                    </button>
+                    <button class="admin-nav-item" data-admin-tab="product-intelligence" onclick="switchAdminTab('product-intelligence')">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+                        Product Intelligence
                     </button>
                     <button class="admin-nav-item" data-admin-tab="customer-intelligence" onclick="switchAdminTab('customer-intelligence')">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
@@ -781,23 +789,23 @@
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
                         Inventory Intelligence
                     </button>
-                    <button class="admin-nav-item" data-admin-tab="product-intelligence" onclick="switchAdminTab('product-intelligence')">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-                        Product Intelligence
-                    </button>
                     <button class="admin-nav-item" data-admin-tab="review-intelligence" onclick="switchAdminTab('review-intelligence')">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><polyline points="9 10 12 12 15 10"/></svg>
                         Review Intelligence
                     </button>
+                    <button class="admin-nav-item" data-admin-tab="ai-recommendations" onclick="switchAdminTab('ai-recommendations')">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                        AI Recommendations
+                    </button>
                     <button class="admin-nav-item" data-admin-tab="ai-insights" onclick="switchAdminTab('ai-insights')">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-                        AI Business Insights
+                        AI Insights Panel
                     </button>
 
-                    <div class="admin-nav-divider">OPERATIONS &amp; RELATIONAL LAB</div>
-                    <button class="admin-nav-item" data-admin-tab="inventory" onclick="switchAdminTab('inventory')">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
-                        Product Catalog
+                    <div class="admin-nav-divider">DATABASE &amp; RELATIONAL LAB</div>
+                    <button class="admin-nav-item" data-admin-tab="dbms" onclick="switchAdminTab('dbms')">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+                        Database Lab (SQL &amp; Views)
                     </button>
                     <button class="admin-nav-item" data-admin-tab="orders" onclick="switchAdminTab('orders')">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
@@ -805,11 +813,11 @@
                     </button>
                     <button class="admin-nav-item" data-admin-tab="rules" onclick="switchAdminTab('rules')">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-                        XAI Auditor &amp; Apriori Rules
+                        Apriori Rules &amp; XAI Auditor
                     </button>
-                    <button class="admin-nav-item" data-admin-tab="dbms" onclick="switchAdminTab('dbms')">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
-                        Database Lab (SQL &amp; Views)
+                    <button class="admin-nav-item" data-admin-tab="inventory" onclick="switchAdminTab('inventory')">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                        Product Catalog Table
                     </button>
                 </nav>
             </aside>
@@ -817,36 +825,85 @@
             <!-- Admin Tab Content Body -->
             <div class="admin-content-body">
 
-                <!-- 1. ADMIN DASHBOARD -->
+                <!-- 1. ADMIN OVERVIEW DASHBOARD -->
                 <div id="admin-tab-dashboard" class="admin-tab-pane active">
-                    <h2 class="admin-section-title">E-Commerce Performance KPIs</h2>
-                    <!-- Stat Cards -->
-                    <div class="admin-kpi-grid">
-                        <div class="kpi-card">
-                            <span class="kpi-label">Gross Revenue</span>
-                            <h3 class="kpi-val" id="adminKpiRevenue">$0.00</h3>
-                            <span class="kpi-sub">Total lifetime completed orders</span>
+                    <div class="admin-pane-header">
+                        <div>
+                            <h2>Executive Operations Overview</h2>
+                            <p class="admin-subtitle">Live store health, verified database metrics, and genuine historical period benchmarks</p>
                         </div>
-                        <div class="kpi-card">
-                            <span class="kpi-label">Total Orders</span>
-                            <h3 class="kpi-val" id="adminKpiOrders">0</h3>
-                            <span class="kpi-sub">Across 8 product domains</span>
-                        </div>
-                        <div class="kpi-card">
-                            <span class="kpi-label">Registered Customers</span>
-                            <h3 class="kpi-val" id="adminKpiCustomers">25</h3>
-                            <span class="kpi-sub">Active profiles C101-C125</span>
-                        </div>
-                        <div class="kpi-card">
-                            <span class="kpi-label">Mined Association Rules</span>
-                            <h3 class="kpi-val" id="adminKpiRules">0</h3>
-                            <span class="kpi-sub">Confidence &ge; 50% &bull; Lift &ge; 1.2x</span>
+                        <!-- Range Filter Bar -->
+                        <div class="admin-range-bar" style="margin-bottom:0;">
+                            <span class="range-label">Time Window:</span>
+                            <button class="range-filter-btn" data-overview-range="7d" onclick="changeOverviewDateRange('7d')">7 Days</button>
+                            <button class="range-filter-btn active" data-overview-range="30d" onclick="changeOverviewDateRange('30d')">30 Days</button>
+                            <button class="range-filter-btn" data-overview-range="90d" onclick="changeOverviewDateRange('90d')">90 Days</button>
+                            <button class="range-filter-btn" data-overview-range="all" onclick="changeOverviewDateRange('all')">All Time</button>
                         </div>
                     </div>
 
-                    <!-- Domain Revenue Breakdown -->
+                    <!-- 6 Real KPI Cards -->
+                    <div class="admin-kpi-grid">
+                        <div class="kpi-card">
+                            <span class="kpi-label">Total Revenue</span>
+                            <div style="display:flex; align-items:baseline;">
+                                <h3 class="kpi-val" id="adminKpiRevenue">$0.00</h3>
+                                <span class="kpi-growth-tag flat" id="adminGrowthRevenue">--</span>
+                            </div>
+                            <span class="kpi-sub" id="adminSubRevenue">Calculated from completed transactions</span>
+                        </div>
+                        <div class="kpi-card">
+                            <span class="kpi-label">Total Orders</span>
+                            <div style="display:flex; align-items:baseline;">
+                                <h3 class="kpi-val" id="adminKpiOrders">0</h3>
+                                <span class="kpi-growth-tag flat" id="adminGrowthOrders">--</span>
+                            </div>
+                            <span class="kpi-sub" id="adminSubOrders">Completed customer orders</span>
+                        </div>
+                        <div class="kpi-card clickable-kpi" onclick="switchAdminTab('customer-intelligence')" title="Click to view Customer Intelligence">
+                            <span class="kpi-label">Total Customers</span>
+                            <h3 class="kpi-val" id="adminKpiCustomers">0</h3>
+                            <span class="kpi-sub" id="adminSubCustomers">Registered customer accounts &rarr;</span>
+                        </div>
+                        <div class="kpi-card">
+                            <span class="kpi-label">Average Order Value (AOV)</span>
+                            <div style="display:flex; align-items:baseline;">
+                                <h3 class="kpi-val" id="adminKpiAov">$0.00</h3>
+                                <span class="kpi-growth-tag flat" id="adminGrowthAov">--</span>
+                            </div>
+                            <span class="kpi-sub">Mean gross revenue per order</span>
+                        </div>
+                        <div class="kpi-card clickable-kpi" onclick="switchAdminTab('product-intelligence')" title="Click to view Product Intelligence">
+                            <span class="kpi-label">Products Sold</span>
+                            <h3 class="kpi-val" id="adminKpiProductsSold">0</h3>
+                            <span class="kpi-sub">Distinct SKUs with completed orders &rarr;</span>
+                        </div>
+                        <div class="kpi-card clickable-kpi" onclick="drillDownToLowStock()" title="Click to view Low Stock Inventory">
+                            <span class="kpi-label">Low Stock Products</span>
+                            <h3 class="kpi-val" id="adminKpiLowStock" style="color:#f87171;">0</h3>
+                            <span class="kpi-sub" style="color:#fca5a5;">⚠ Needs restock attention &rarr;</span>
+                        </div>
+                    </div>
+
+                    <!-- AI Insights Live Panel on Overview -->
+                    <div class="admin-insights-container">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+                            <h3 style="font-size:1.05rem; display:flex; align-items:center; gap:0.5rem;">
+                                <span>⚡ Operational AI Business Insights</span>
+                            </h3>
+                            <button class="link-btn" onclick="switchAdminTab('ai-insights')">View Full Intelligence Log &rarr;</button>
+                        </div>
+                        <div class="insights-grid" id="adminOverviewInsightsGrid">
+                            <!-- Populated dynamically via JS -->
+                        </div>
+                    </div>
+
+                    <!-- Category Domain Revenue Breakdown -->
                     <div class="admin-card">
-                        <h3>Sales Revenue by Category Domain</h3>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                            <h3>Sales Revenue by Category Domain</h3>
+                            <button class="link-btn" onclick="switchAdminTab('sales-analytics')">Open Sales Analytics &rarr;</button>
+                        </div>
                         <div class="table-responsive">
                             <table class="data-table">
                                 <thead>
@@ -854,6 +911,7 @@
                                         <th>Domain Category</th>
                                         <th>Items Sold</th>
                                         <th>Gross Revenue</th>
+                                        <th>Action</th>
                                     </tr>
                                 </thead>
                                 <tbody id="adminDomainSalesBody"></tbody>
@@ -863,7 +921,10 @@
 
                     <!-- Recent Orders Table -->
                     <div class="admin-card">
-                        <h3>Recent Store Transactions</h3>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                            <h3>Recent Completed Transactions</h3>
+                            <button class="link-btn" onclick="switchAdminTab('orders')">View All Transactions &rarr;</button>
+                        </div>
                         <div class="table-responsive">
                             <table class="data-table">
                                 <thead>
@@ -877,6 +938,243 @@
                                     </tr>
                                 </thead>
                                 <tbody id="adminRecentOrdersBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ==========================================================
+                     PHASE 9 TAB: SALES ANALYTICS & REVENUE ENGINE
+                     ========================================================== -->
+                <div id="admin-tab-sales-analytics" class="admin-tab-pane">
+                    <div class="admin-pane-header">
+                        <div>
+                            <h2>Sales Analytics &amp; Revenue Intelligence</h2>
+                            <p class="admin-subtitle">Order timelines, category revenue shares, payment distribution, and top performers</p>
+                        </div>
+                        <!-- Range Filter Bar -->
+                        <div class="admin-range-bar" style="margin-bottom:0;">
+                            <span class="range-label">Time Window:</span>
+                            <button class="range-filter-btn" data-sales-range="7d" onclick="changeSalesDateRange('7d')">7 Days</button>
+                            <button class="range-filter-btn active" data-sales-range="30d" onclick="changeSalesDateRange('30d')">30 Days</button>
+                            <button class="range-filter-btn" data-sales-range="90d" onclick="changeSalesDateRange('90d')">90 Days</button>
+                            <button class="range-filter-btn" data-sales-range="all" onclick="changeSalesDateRange('all')">All Time</button>
+                        </div>
+                    </div>
+
+                    <!-- Headline Metrics -->
+                    <div class="admin-kpi-grid">
+                        <div class="kpi-card">
+                            <span class="kpi-label">Period Revenue</span>
+                            <h3 class="kpi-val" id="salesKpiRevenue">$0.00</h3>
+                            <span class="kpi-sub" id="salesSubRevenue">Filtered window revenue</span>
+                        </div>
+                        <div class="kpi-card">
+                            <span class="kpi-label">Period Orders</span>
+                            <h3 class="kpi-val" id="salesKpiOrders">0</h3>
+                            <span class="kpi-sub">Total checkouts completed</span>
+                        </div>
+                        <div class="kpi-card">
+                            <span class="kpi-label">Average Order Value</span>
+                            <h3 class="kpi-val" id="salesKpiAov">$0.00</h3>
+                            <span class="kpi-sub">Revenue / order ratio</span>
+                        </div>
+                        <div class="kpi-card">
+                            <span class="kpi-label">Units Moved</span>
+                            <h3 class="kpi-val" id="salesKpiUnits">0</h3>
+                            <span class="kpi-sub">Physical quantity dispatched</span>
+                        </div>
+                    </div>
+
+                    <!-- Visual Charts Row: Timeline & Category Shares -->
+                    <div class="sales-charts-grid">
+                        <!-- Left: SVG Timeline Line Chart -->
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <div class="chart-title-wrap">
+                                    <h3>Revenue &amp; Orders Over Time</h3>
+                                    <span class="chart-subtitle" id="salesChartSubtitle">Daily trajectory backed by database timestamps</span>
+                                </div>
+                                <div style="display:flex; gap:0.75rem; font-size:0.75rem; color:var(--text-muted);">
+                                    <span style="display:flex; align-items:center; gap:0.3rem;"><span style="width:10px; height:10px; background:#6366f1; border-radius:2px;"></span> Revenue ($)</span>
+                                    <span style="display:flex; align-items:center; gap:0.3rem;"><span style="width:10px; height:10px; background:#0ea5e9; border-radius:2px;"></span> Orders</span>
+                                </div>
+                            </div>
+                            <div class="svg-chart-container" id="salesSvgChartWrap">
+                                <!-- Dynamic SVG Line Chart rendered by app.js -->
+                            </div>
+                        </div>
+
+                        <!-- Right: Category Revenue Share Progress Bars -->
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <div class="chart-title-wrap">
+                                    <h3>Revenue by Category</h3>
+                                    <span class="chart-subtitle">Share of sales across product domains</span>
+                                </div>
+                            </div>
+                            <div class="cat-progress-list" id="salesCategorySharesWrap">
+                                <!-- Dynamic progress bars rendered by app.js -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Payment Method Distribution -->
+                    <div class="admin-card">
+                        <h3 style="margin-bottom:1rem;">Payment Method Distribution</h3>
+                        <div class="payment-grid" id="salesPaymentGrid">
+                            <!-- Populated dynamically via JS -->
+                        </div>
+                    </div>
+
+                    <!-- Top Selling and Revenue Leaders Split Tables -->
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.5rem; margin-top:1.5rem;">
+                        <div class="admin-card" style="margin-bottom:0;">
+                            <h3 style="margin-bottom:1rem;">Top-Selling Products by Volume</h3>
+                            <div class="table-responsive">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Product Name</th>
+                                            <th>Category</th>
+                                            <th>Units Sold</th>
+                                            <th>Revenue</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="salesTopSellingBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="admin-card" style="margin-bottom:0;">
+                            <h3 style="margin-bottom:1rem;">Highest-Revenue Products</h3>
+                            <div class="table-responsive">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Product Name</th>
+                                            <th>Category</th>
+                                            <th>Gross Revenue</th>
+                                            <th>Units</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="salesHighestRevenueBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ==========================================================
+                     PHASE 9 TAB: AI RECOMMENDATIONS ENGINE ANALYTICS
+                     ========================================================== -->
+                <div id="admin-tab-ai-recommendations" class="admin-tab-pane">
+                    <div class="admin-pane-header">
+                        <div>
+                            <h2>AI Recommendation Engine Analytics</h2>
+                            <p class="admin-subtitle">Apriori association rules, hybrid ranking signal weights, and commerce intent telemetry</p>
+                        </div>
+                        <span class="badge-pill-academic" style="background:rgba(99,102,241,0.15); color:#a5b4fc; border-color:rgba(99,102,241,0.3);">Multi-Signal Hybrid AI</span>
+                    </div>
+
+                    <!-- Engine Headline KPIs -->
+                    <div class="admin-kpi-grid">
+                        <div class="kpi-card">
+                            <span class="kpi-label">Active Association Rules</span>
+                            <h3 class="kpi-val" id="aiKpiRulesCount">--</h3>
+                            <span class="kpi-sub">Mined from relational baskets</span>
+                        </div>
+                        <div class="kpi-card">
+                            <span class="kpi-label">Average Rule Confidence</span>
+                            <h3 class="kpi-val" id="aiKpiAvgConf">--%</h3>
+                            <span class="kpi-sub">Mean conditional probability P(Y|X)</span>
+                        </div>
+                        <div class="kpi-card">
+                            <span class="kpi-label">Average Rule Lift</span>
+                            <h3 class="kpi-val" id="aiKpiAvgLift">--x</h3>
+                            <span class="kpi-sub">Co-occurrence frequency above chance</span>
+                        </div>
+                        <div class="kpi-card">
+                            <span class="kpi-label">Max Association Lift</span>
+                            <h3 class="kpi-val" id="aiKpiMaxLift" style="color:#a855f7;">--x</h3>
+                            <span class="kpi-sub">Peak basket pair affinity</span>
+                        </div>
+                        <div class="kpi-card">
+                            <span class="kpi-label">Active Hybrid Signals</span>
+                            <h3 class="kpi-val" id="aiKpiSignalCount" style="color:#38bdf8;">5</h3>
+                            <span class="kpi-sub">Co-occurrence, Content, Intent, Popularity, Stock</span>
+                        </div>
+                    </div>
+
+                    <!-- Hybrid Signal Weights Matrix -->
+                    <div class="admin-card">
+                        <h3 style="margin-bottom:0.35rem;">Active Hybrid Ranking Signal Weights</h3>
+                        <p class="view-intro" style="margin-bottom:1rem;">Deterministic score contribution applied across candidate products during personalized recommendation generation:</p>
+                        <div class="ai-signals-matrix" id="aiSignalsMatrixWrap">
+                            <!-- Populated dynamically via JS -->
+                        </div>
+                    </div>
+
+                    <!-- Supported Commerce Intent Handlers -->
+                    <div class="admin-card">
+                        <h3 style="margin-bottom:0.35rem;">Supported Commerce Intent Handlers</h3>
+                        <p class="view-intro" style="margin-bottom:1rem;">Context-aware pipelines triggered dynamically based on customer shopping state:</p>
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Commerce Intent Tag</th>
+                                        <th>Description</th>
+                                        <th>Primary AI Signal</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="aiIntentsTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Top 8 Strongest Association Rules Table -->
+                    <div class="admin-card">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                            <div>
+                                <h3>Strongest Apriori Association Rules</h3>
+                                <p class="view-intro">Highest statistical lift pairs discovered across completed baskets</p>
+                            </div>
+                            <button class="link-btn" onclick="switchAdminTab('rules')">Open Full Rule Auditor &rarr;</button>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Antecedent (If Bought)</th>
+                                        <th>&rarr;</th>
+                                        <th>Consequent (Recommends)</th>
+                                        <th>Confidence</th>
+                                        <th>Lift Factor</th>
+                                        <th>Support</th>
+                                        <th>Affinity Score</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="aiTopRulesTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Most Frequently Recommended Companion Products -->
+                    <div class="admin-card">
+                        <h3 style="margin-bottom:0.35rem;">Most Frequently Recommended Companion Products</h3>
+                        <p class="view-intro" style="margin-bottom:1rem;">SKUs that appear most often as consequent recommendations in high-confidence association rules:</p>
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>SKU</th>
+                                        <th>Product Name</th>
+                                        <th>Association Appearances</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="aiCompanionsTableBody"></tbody>
                             </table>
                         </div>
                     </div>
@@ -1120,8 +1418,18 @@
                     <!-- Product Matrix Table -->
                     <div class="admin-card">
                         <div class="ci-table-controls-row">
-                            <h3>Catalog Commercial Matrix</h3>
+                            <div>
+                                <h3>Catalog Commercial &amp; Quality Intelligence</h3>
+                                <p class="view-intro">Consolidated metrics combining sales volume, gross revenue, stock coverage, and customer sentiment</p>
+                            </div>
                             <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                                <select id="prodSortSelect" class="admin-select" onchange="handleProdFilterChange()">
+                                    <option value="best_selling">Sort: Best Selling (Volume)</option>
+                                    <option value="highest_revenue">Sort: Highest Revenue</option>
+                                    <option value="highest_rated">Sort: Highest Customer Rating</option>
+                                    <option value="low_stock">Sort: Low Stock / Critical</option>
+                                    <option value="poorly_reviewed">Sort: Poorly Reviewed / Issues</option>
+                                </select>
                                 <select id="prodCategoryFilterSelect" class="admin-select" onchange="handleProdFilterChange()"></select>
                                 <input type="text" id="prodSearchInput" class="admin-search-input" placeholder="Search product..." oninput="handleProdFilterChange()">
                             </div>
@@ -1130,19 +1438,18 @@
                             <table class="data-table">
                                 <thead>
                                     <tr>
-                                        <th>Rev Rank</th>
-                                        <th>Vol Rank</th>
                                         <th>SKU</th>
                                         <th>Product Name</th>
                                         <th>Category</th>
                                         <th>Price</th>
-                                        <th>Stock</th>
                                         <th>Units Sold</th>
                                         <th>Gross Revenue</th>
+                                        <th>Rating &amp; Reviews</th>
+                                        <th>Current Stock</th>
                                         <th>Velocity</th>
-                                        <th>Rating</th>
-                                        <th>Risk State</th>
-                                        <th>Top Companion SKU</th>
+                                        <th>Inventory Risk</th>
+                                        <th>Performance Indicator</th>
+                                        <th>Action</th>
                                     </tr>
                                 </thead>
                                 <tbody id="prodMatrixTableBody"></tbody>

@@ -2052,14 +2052,18 @@ function switchAdminTab(tabName) {
     // Load data for the selected admin tab
     if (tabName === "dashboard") {
         loadAdminOverview();
+    } else if (tabName === "sales-analytics") {
+        loadAdminSalesAnalytics();
+    } else if (tabName === "product-intelligence") {
+        loadAdminProductIntelligence();
     } else if (tabName === "customer-intelligence") {
         loadAdminCustomerIntelligence();
     } else if (tabName === "inventory-intelligence") {
         loadAdminInventoryIntelligence();
-    } else if (tabName === "product-intelligence") {
-        loadAdminProductIntelligence();
     } else if (tabName === "review-intelligence") {
         loadAdminReviewIntelligence();
+    } else if (tabName === "ai-recommendations") {
+        loadAdminAiRecommendations();
     } else if (tabName === "ai-insights") {
         loadAdminAiInsights();
     } else if (tabName === "inventory") {
@@ -2078,42 +2082,479 @@ function switchAdminTab(tabName) {
     }
 }
 
-async function loadAdminOverview() {
+// -----------------------------------------------------------------------------
+// PHASE 9: EXECUTIVE OVERVIEW CONTROLLER
+// -----------------------------------------------------------------------------
+let currentOverviewRange = "30d";
+let currentSalesRange = "30d";
+let activeProdSort = "best_selling";
+
+function changeOverviewDateRange(range) {
+    currentOverviewRange = range;
+    document.querySelectorAll("[data-overview-range]").forEach(btn => {
+        btn.classList.toggle("active", btn.dataset.overviewRange === range);
+    });
+    loadAdminOverview(range);
+}
+
+function changeSalesDateRange(range) {
+    currentSalesRange = range;
+    document.querySelectorAll("[data-sales-range]").forEach(btn => {
+        btn.classList.toggle("active", btn.dataset.salesRange === range);
+    });
+    loadAdminSalesAnalytics(range);
+}
+
+function drillDownToLowStock() {
+    switchAdminTab("inventory-intelligence");
+    const sel = document.getElementById("invRiskFilterSelect");
+    if (sel) {
+        sel.value = "LOW STOCK";
+        handleInvRiskFilterChange();
+    }
+}
+
+function filterProductByCategoryName(catName) {
+    switchAdminTab("product-intelligence");
+    const sel = document.getElementById("prodCategoryFilterSelect");
+    if (sel) {
+        for (let i = 0; i < sel.options.length; i++) {
+            if (sel.options[i].text.includes(catName)) {
+                sel.selectedIndex = i;
+                break;
+            }
+        }
+        handleProdFilterChange();
+    }
+}
+
+function filterProductById(pid) {
+    switchAdminTab("product-intelligence");
+    const input = document.getElementById("prodSearchInput");
+    if (input) {
+        input.value = pid;
+        handleProdFilterChange();
+    }
+}
+
+function renderGrowthTag(el, pct, trend) {
+    if (!el) return;
+    if (trend === "UP") {
+        el.className = "kpi-growth-tag up";
+        el.innerText = `↑ +${pct}%`;
+    } else if (trend === "DOWN") {
+        el.className = "kpi-growth-tag down";
+        el.innerText = `↓ ${pct}%`;
+    } else {
+        el.className = "kpi-growth-tag flat";
+        el.innerText = `→ 0%`;
+    }
+}
+
+function setAllTimeTag(el) {
+    if (!el) return;
+    el.className = "kpi-growth-tag flat";
+    el.innerText = `All-Time`;
+}
+
+async function loadAdminOverview(range = currentOverviewRange) {
+    currentOverviewRange = range;
     try {
-        const res = await fetch(`${API_BASE}/api/admin/overview`);
+        const res = await fetch(`${API_BASE}/api/admin/overview?range=${range}`);
         const json = await res.json();
         if (json.status === "success") {
-            const ov = json.overview;
-            document.getElementById("adminKpiRevenue").innerText = formatMoney(ov.gross_revenue);
-            document.getElementById("adminKpiOrders").innerText = ov.total_orders;
-            document.getElementById("adminKpiCustomers").innerText = ov.total_customers;
-            document.getElementById("adminKpiRules").innerText = ov.total_rules;
+            const k = json.kpis || {};
+            const growth = json.growth_comparison || {};
+
+            // 6 KPI cards
+            const elRev = document.getElementById("adminKpiRevenue");
+            const elOrd = document.getElementById("adminKpiOrders");
+            const elCust = document.getElementById("adminKpiCustomers");
+            const elAov = document.getElementById("adminKpiAov");
+            const elSold = document.getElementById("adminKpiProductsSold");
+            const elLow = document.getElementById("adminKpiLowStock");
+
+            if (elRev) elRev.innerText = formatMoney(k.total_revenue || 0);
+            if (elOrd) elOrd.innerText = k.total_orders || 0;
+            if (elCust) elCust.innerText = k.total_customers || 0;
+            if (elAov) elAov.innerText = formatMoney(k.average_order_value || 0);
+            if (elSold) elSold.innerText = k.products_sold || 0;
+            if (elLow) elLow.innerText = k.low_stock_products || 0;
+
+            // Growth comparisons
+            const elGRev = document.getElementById("adminGrowthRevenue");
+            const elGOrd = document.getElementById("adminGrowthOrders");
+            const elGAov = document.getElementById("adminGrowthAov");
+
+            if (growth && growth.is_comparable) {
+                renderGrowthTag(elGRev, growth.revenue_change_pct, growth.revenue_trend);
+                renderGrowthTag(elGOrd, growth.orders_change_pct, growth.orders_trend);
+                renderGrowthTag(elGAov, growth.aov_change_pct, growth.aov_trend);
+            } else {
+                setAllTimeTag(elGRev);
+                setAllTimeTag(elGOrd);
+                setAllTimeTag(elGAov);
+            }
 
             // Domain sales
             const salesBody = document.getElementById("adminDomainSalesBody");
-            salesBody.innerHTML = ov.category_sales.map(s => `
-                <tr>
-                    <td><strong>${escapeHtml(s.category_name)}</strong></td>
-                    <td>${s.items_sold} items</td>
-                    <td><strong>${formatMoney(s.revenue)}</strong></td>
-                </tr>
-            `).join("");
+            if (salesBody && json.category_sales) {
+                salesBody.innerHTML = json.category_sales.map(s => `
+                    <tr>
+                        <td><strong>${escapeHtml(s.category_name)}</strong></td>
+                        <td>${s.items_sold} units sold</td>
+                        <td><strong>${formatMoney(s.revenue)}</strong></td>
+                        <td>
+                            <button class="link-btn" style="font-size:0.75rem;" onclick="filterProductByCategoryName('${escapeHtml(s.category_name)}')">Filter Products &rarr;</button>
+                        </td>
+                    </tr>
+                `).join("");
+            }
 
             // Recent orders
             const recBody = document.getElementById("adminRecentOrdersBody");
-            recBody.innerHTML = ov.recent_orders.map(o => `
-                <tr>
-                    <td><strong>${o.order_id}</strong></td>
-                    <td>${escapeHtml(o.customer_name)}</td>
-                    <td>${o.order_date}</td>
-                    <td>${formatMoney(o.total_amount)}</td>
-                    <td>${o.payment_method}</td>
-                    <td><span class="stock-status-pill in-stock">${o.order_status}</span></td>
-                </tr>
-            `).join("");
+            if (recBody && json.recent_orders) {
+                recBody.innerHTML = json.recent_orders.map(o => `
+                    <tr>
+                        <td><strong>${o.order_id}</strong></td>
+                        <td>${escapeHtml(o.customer_name)}</td>
+                        <td>${o.order_date}</td>
+                        <td>${formatMoney(o.total_amount)}</td>
+                        <td>${o.payment_method}</td>
+                        <td><span class="stock-status-pill in-stock">${o.order_status}</span></td>
+                    </tr>
+                `).join("");
+            }
+
+            // AI Insights preview on overview
+            loadOverviewInsightsPreview(range);
         }
     } catch (err) {
         console.error("Error loading admin overview:", err);
+    }
+}
+
+async function loadOverviewInsightsPreview(range) {
+    const grid = document.getElementById("adminOverviewInsightsGrid");
+    if (!grid) return;
+    try {
+        const res = await fetch(`${API_BASE}/api/admin/insights?range=${range}`);
+        const json = await res.json();
+        if (json.status === "success" && json.insights) {
+            grid.innerHTML = json.insights.slice(0, 3).map(ins => `
+                <div class="insight-card ${ins.severity || 'info'}">
+                    <div class="insight-top">
+                        <span class="insight-badge">${ins.category.replace(/_/g, ' ')}</span>
+                        <span style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">${ins.severity}</span>
+                    </div>
+                    <h4 class="insight-title">${escapeHtml(ins.title)}</h4>
+                    <p class="insight-detail">${escapeHtml(ins.detail)}</p>
+                    <div class="insight-footer">
+                        <span class="insight-action-text">${escapeHtml(ins.action)}</span>
+                        ${ins.drilldown_tab ? `<button class="insight-action-btn" onclick="switchAdminTab('${ins.drilldown_tab}')">Action &rarr;</button>` : ''}
+                    </div>
+                </div>
+            `).join("");
+        }
+    } catch (err) {
+        console.error("Error loading overview insights:", err);
+    }
+}
+
+// -----------------------------------------------------------------------------
+// PHASE 9: SALES ANALYTICS & TIMELINE CONTROLLER
+// -----------------------------------------------------------------------------
+async function loadAdminSalesAnalytics(range = currentSalesRange) {
+    currentSalesRange = range;
+    try {
+        const res = await fetch(`${API_BASE}/api/admin/sales-analytics?range=${range}`);
+        const json = await res.json();
+        if (json.status !== "success") return;
+
+        const sum = json.summary || {};
+        const elRev = document.getElementById("salesKpiRevenue");
+        const elOrd = document.getElementById("salesKpiOrders");
+        const elAov = document.getElementById("salesKpiAov");
+        const elUnits = document.getElementById("salesKpiUnits");
+
+        if (elRev) elRev.innerText = formatMoney(sum.total_revenue || 0);
+        if (elOrd) elOrd.innerText = sum.total_orders || 0;
+        if (elAov) elAov.innerText = formatMoney(sum.aov || 0);
+        if (elUnits) elUnits.innerText = sum.units_sold || 0;
+
+        // Render SVG Line Chart
+        renderSalesSvgChart(json.timeline || []);
+
+        // Render Category Shares
+        renderSalesCategoryShares(json.category_sales || []);
+
+        // Render Payment Method distribution
+        renderSalesPaymentDistribution(json.payment_methods || []);
+
+        // Render Top Selling by volume
+        const topSellBody = document.getElementById("salesTopSellingBody");
+        if (topSellBody && json.top_selling_products) {
+            topSellBody.innerHTML = json.top_selling_products.map(p => `
+                <tr>
+                    <td><strong>${escapeHtml(p.product_name)}</strong></td>
+                    <td><span class="category-badge">${escapeHtml(p.category_name)}</span></td>
+                    <td><strong style="color:#38bdf8;">${p.units_sold}</strong> units</td>
+                    <td>${formatMoney(p.revenue)}</td>
+                </tr>
+            `).join("");
+        }
+
+        // Render Highest Revenue leaders
+        const topRevBody = document.getElementById("salesHighestRevenueBody");
+        if (topRevBody && json.highest_revenue_products) {
+            topRevBody.innerHTML = json.highest_revenue_products.map(p => `
+                <tr>
+                    <td><strong>${escapeHtml(p.product_name)}</strong></td>
+                    <td><span class="category-badge">${escapeHtml(p.category_name)}</span></td>
+                    <td><strong style="color:#34d399;">${formatMoney(p.revenue)}</strong></td>
+                    <td>${p.units_sold} units</td>
+                </tr>
+            `).join("");
+        }
+
+    } catch (err) {
+        console.error("Error loading sales analytics:", err);
+    }
+}
+
+function renderSalesSvgChart(timeline) {
+    const wrap = document.getElementById("salesSvgChartWrap");
+    if (!wrap) return;
+
+    if (!timeline || timeline.length === 0) {
+        wrap.innerHTML = `<div style="text-align:center; padding:3.5rem 1rem; color:var(--text-muted); font-size:0.85rem;">No transaction data found for this date range.</div>`;
+        return;
+    }
+
+    const maxRev = Math.max(...timeline.map(t => t.revenue), 100);
+    const maxOrd = Math.max(...timeline.map(t => t.orders_count), 1);
+    const count = timeline.length;
+
+    const width = 600;
+    const height = 220;
+    const padL = 50;
+    const padR = 25;
+    const padT = 20;
+    const padB = 35;
+    const chartW = width - padL - padR;
+    const chartH = height - padT - padB;
+
+    const getX = (idx) => {
+        if (count === 1) return padL + chartW / 2;
+        return padL + (idx / (count - 1)) * chartW;
+    };
+    const getYRev = (rev) => padT + chartH - (rev / maxRev) * chartH;
+    const getYOrd = (ord) => padT + chartH - (ord / maxOrd) * chartH;
+
+    const revPoints = timeline.map((t, i) => `${getX(i)},${getYRev(t.revenue)}`).join(" ");
+    const ordPoints = timeline.map((t, i) => `${getX(i)},${getYOrd(t.orders_count)}`).join(" ");
+
+    // Fill polygon for revenue
+    const firstX = getX(0);
+    const lastX = getX(count - 1);
+    const baseY = padT + chartH;
+    const areaPoints = `${firstX},${baseY} ` + timeline.map((t, i) => `${getX(i)},${getYRev(t.revenue)}`).join(" ") + ` ${lastX},${baseY}`;
+
+    // Grid lines
+    let gridHtml = "";
+    for (let s = 0; s <= 4; s++) {
+        const y = padT + (chartH / 4) * s;
+        const val = Math.round(maxRev * (1 - s / 4));
+        gridHtml += `
+            <line x1="${padL}" y1="${y}" x2="${width - padR}" y2="${y}" stroke="rgba(255,255,255,0.07)" stroke-dasharray="3 3"/>
+            <text x="${padL - 8}" y="${y + 4}" fill="#64748b" font-size="9" text-anchor="end">$${val >= 1000 ? (val/1000).toFixed(1)+'k' : val}</text>
+        `;
+    }
+
+    // Circles and date labels
+    let dotsHtml = "";
+    const labelStep = Math.max(1, Math.floor(count / 6));
+    timeline.forEach((t, i) => {
+        const x = getX(i);
+        const y = getYRev(t.revenue);
+        dotsHtml += `
+            <circle cx="${x}" cy="${y}" r="3.5" fill="#818cf8" stroke="#0f172a" stroke-width="2">
+                <title>${t.date}: ${formatMoney(t.revenue)} (${t.orders_count} orders, ${t.units_sold} units)</title>
+            </circle>
+        `;
+        if (i % labelStep === 0 || i === count - 1) {
+            const shortDate = t.date.slice(5);
+            dotsHtml += `
+                <text x="${x}" y="${height - 10}" fill="#94a3b8" font-size="9.5" text-anchor="middle">${shortDate}</text>
+            `;
+        }
+    });
+
+    wrap.innerHTML = `
+        <svg viewBox="0 0 ${width} ${height}" class="svg-chart">
+            <defs>
+                <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#6366f1" stop-opacity="0.35"/>
+                    <stop offset="100%" stop-color="#6366f1" stop-opacity="0.0"/>
+                </linearGradient>
+            </defs>
+            ${gridHtml}
+            <polygon points="${areaPoints}" fill="url(#revGrad)"/>
+            <polyline points="${ordPoints}" fill="none" stroke="#0ea5e9" stroke-width="2" stroke-dasharray="3 3"/>
+            <polyline points="${revPoints}" fill="none" stroke="#6366f1" stroke-width="2.5"/>
+            ${dotsHtml}
+        </svg>
+    `;
+}
+
+function renderSalesCategoryShares(cats) {
+    const wrap = document.getElementById("salesCategorySharesWrap");
+    if (!wrap) return;
+
+    if (!cats || cats.length === 0) {
+        wrap.innerHTML = `<div style="text-align:center; padding:2rem; color:var(--text-muted);">No category sales in period.</div>`;
+        return;
+    }
+
+    wrap.innerHTML = cats.map(c => `
+        <div class="cat-progress-item">
+            <div class="cat-progress-meta">
+                <span><strong>${escapeHtml(c.category_name)}</strong> &bull; <span style="color:var(--text-muted);">${c.orders_count} orders (${c.units_sold} units)</span></span>
+                <span><strong>${formatMoney(c.revenue)}</strong> (${c.revenue_share_pct}%)</span>
+            </div>
+            <div class="cat-progress-track">
+                <div class="cat-progress-fill" style="width:${Math.max(4, c.revenue_share_pct)}%;"></div>
+            </div>
+        </div>
+    `).join("");
+}
+
+function renderSalesPaymentDistribution(methods) {
+    const grid = document.getElementById("salesPaymentGrid");
+    if (!grid) return;
+
+    if (!methods || methods.length === 0) {
+        grid.innerHTML = `<div style="grid-column:1/-1; color:var(--text-muted); text-align:center; padding:1.5rem;">No payment transactions recorded.</div>`;
+        return;
+    }
+
+    const iconMap = {
+        "CREDIT_CARD": "💳 Credit Card",
+        "DEBIT_CARD": "🏦 Debit Card",
+        "PAYPAL": "🅿️ PayPal",
+        "CRYPTO": "🪙 Crypto",
+        "STORE_CREDIT": "🎟️ Store Credit"
+    };
+
+    grid.innerHTML = methods.map(m => `
+        <div class="payment-card">
+            <div>
+                <span class="payment-method-name">${iconMap[m.method] || m.method}</span>
+                <div class="payment-method-amt">${formatMoney(m.total_amount)}</div>
+            </div>
+            <div class="payment-method-sub">${m.count} checkouts &bull; <strong>${m.share_pct}%</strong> share</div>
+        </div>
+    `).join("");
+}
+
+// -----------------------------------------------------------------------------
+// PHASE 9: AI RECOMMENDATION ENGINE ANALYTICS CONTROLLER
+// -----------------------------------------------------------------------------
+async function loadAdminAiRecommendations() {
+    try {
+        const res = await fetch(`${API_BASE}/api/admin/ai-recommendation-analytics`);
+        const json = await res.json();
+        if (json.status !== "success") return;
+
+        const k = json.kpis || {};
+        const elRules = document.getElementById("aiKpiRulesCount");
+        const elConf = document.getElementById("aiKpiAvgConf");
+        const elLift = document.getElementById("aiKpiAvgLift");
+        const elMax = document.getElementById("aiKpiMaxLift");
+        const elSig = document.getElementById("aiKpiSignalCount");
+
+        if (elRules) elRules.innerText = k.active_association_rules || 0;
+        if (elConf) elConf.innerText = `${Math.round((k.average_rule_confidence || 0) * 100)}%`;
+        if (elLift) elLift.innerText = `${(k.average_rule_lift || 0).toFixed(2)}x`;
+        if (elMax) elMax.innerText = `${(k.max_lift_factor || 0).toFixed(2)}x`;
+        if (elSig) elSig.innerText = k.hybrid_signals_active || 5;
+
+        // Render Signals Matrix
+        const sigWrap = document.getElementById("aiSignalsMatrixWrap");
+        if (sigWrap && json.ranker_signals) {
+            const weights = json.ranker_signals;
+            const signals = [
+                { name: "Apriori Basket Rules", weight: weights.apriori || 0.40, desc: "Statistical item co-occurrence ($X \\to Y$)" },
+                { name: "Search Intent Tokens", weight: weights.search || 0.25, desc: "Recent query token rank decay match" },
+                { name: "Content-Based Similarity", weight: weights.similarity || 0.20, desc: "TF-IDF description & brand cosine vectors" },
+                { name: "Community Popularity", weight: weights.popularity || 0.15, desc: "Normalized rating & sales baseline" },
+                { name: "Inventory Safeguard", weight: 1.0, desc: "Out-of-stock exclusion & stockout gating", isFilter: true }
+            ];
+
+            sigWrap.innerHTML = signals.map(s => {
+                const pct = s.isFilter ? 100 : Math.round(s.weight * 100);
+                const displayVal = s.isFilter ? "Gating Filter" : `${pct}%`;
+                return `
+                    <div class="ai-signal-card">
+                        <div class="ai-signal-card-title">
+                            <span>${s.name}</span>
+                            <span style="font-size:0.75rem; color:var(--text-muted);">${displayVal}</span>
+                        </div>
+                        <div class="ai-signal-card-weight">${displayVal}</div>
+                        <div class="ai-signal-card-bar">
+                            <div class="ai-signal-card-bar-fill" style="width:${pct}%;"></div>
+                        </div>
+                        <p style="font-size:0.75rem; color:var(--text-muted); margin-top:0.5rem; line-height:1.35;">${s.desc}</p>
+                    </div>
+                `;
+            }).join("");
+        }
+
+        // Render Supported Intents
+        const intentBody = document.getElementById("aiIntentsTableBody");
+        if (intentBody && json.supported_commerce_intents) {
+            intentBody.innerHTML = json.supported_commerce_intents.map(int => `
+                <tr>
+                    <td><strong style="color:#818cf8;">${int.intent}</strong></td>
+                    <td style="color:var(--text-secondary);">${escapeHtml(int.description)}</td>
+                    <td><span class="badge-pill-light" style="font-size:0.75rem;">${escapeHtml(int.primary_signal)}</span></td>
+                </tr>
+            `).join("");
+        }
+
+        // Render Top Association Rules
+        const rulesBody = document.getElementById("aiTopRulesTableBody");
+        if (rulesBody && json.top_association_rules) {
+            rulesBody.innerHTML = json.top_association_rules.map(r => `
+                <tr>
+                    <td><strong>${escapeHtml(r.antecedent_names.join(", "))}</strong></td>
+                    <td style="color:#818cf8; font-weight:700;">&rarr;</td>
+                    <td><strong>${escapeHtml(r.consequent_names.join(", "))}</strong></td>
+                    <td><span style="color:#34d399; font-weight:700;">${Math.round(r.confidence * 100)}%</span></td>
+                    <td><strong style="color:#a855f7;">${r.lift}x</strong></td>
+                    <td>${(r.support * 100).toFixed(1)}%</td>
+                    <td><strong style="color:#38bdf8;">${r.affinity_score}</strong></td>
+                </tr>
+            `).join("");
+        }
+
+        // Render Companion Products
+        const companionsBody = document.getElementById("aiCompanionsTableBody");
+        if (companionsBody && json.most_frequent_companion_products) {
+            companionsBody.innerHTML = json.most_frequent_companion_products.map(c => `
+                <tr>
+                    <td><strong>${c.product_id}</strong></td>
+                    <td>${escapeHtml(c.product_name)}</td>
+                    <td><span style="color:#34d399; font-weight:700;">${c.association_appearances} rule consequents</span></td>
+                    <td>
+                        <button class="link-btn" style="font-size:0.75rem;" onclick="filterProductById('${c.product_id}')">Inspect Product &rarr;</button>
+                    </td>
+                </tr>
+            `).join("");
+        }
+
+    } catch (err) {
+        console.error("Error loading AI recommendation analytics:", err);
     }
 }
 
@@ -3235,8 +3676,11 @@ function renderInvMatrixTable() {
 // -----------------------------------------------------------------------------
 
 async function loadAdminProductIntelligence() {
+    const sortSel = document.getElementById("prodSortSelect");
+    activeProdSort = sortSel ? sortSel.value : "best_selling";
+
     try {
-        const res = await fetch(`${API_BASE}/api/admin/product-intelligence`);
+        const res = await fetch(`${API_BASE}/api/admin/product-analytics?sort=${activeProdSort}`);
         const json = await res.json();
         if (json.status !== "success") return;
 
@@ -3255,8 +3699,6 @@ async function loadAdminProductIntelligence() {
             const elVolVal = document.getElementById("prodKpiTopVolumeVal");
             const elRat = document.getElementById("prodKpiTopRating");
             const elRatVal = document.getElementById("prodKpiTopRatingVal");
-            const elPair = document.getElementById("prodKpiTopPair");
-            const elPairVal = document.getElementById("prodKpiTopPairVal");
 
             if (elRev && topRev) {
                 elRev.innerText = topRev.product_name;
@@ -3270,25 +3712,16 @@ async function loadAdminProductIntelligence() {
                 elRat.innerText = topRat.product_name;
                 if (elRatVal) elRatVal.innerText = `⭐ ${topRat.avg_rating} (${topRat.review_count} reviews)`;
             }
-
-            // Find top companion pair
-            const withCompanion = prods.filter(p => p.top_companion);
-            if (withCompanion.length > 0 && elPair) {
-                const topP = withCompanion.sort((a, b) => (b.top_companion.co_purchases || 0) - (a.top_companion.co_purchases || 0))[0];
-                elPair.innerText = `${topP.product_id} & ${topP.top_companion.companion_id}`;
-                if (elPairVal) elPairVal.innerText = `${topP.top_companion.co_purchases} co-purchases`;
-            }
         }
 
         // Category filter dropdown
         const catSelect = document.getElementById("prodCategoryFilterSelect");
-        if (catSelect) {
+        if (catSelect && (!catSelect.options || catSelect.options.length <= 1)) {
             const uniqueCats = Array.from(new Set(prods.map(p => p.category_name)));
             catSelect.innerHTML = `<option value="ALL">All Categories (${prods.length})</option>` +
                 uniqueCats.map(c => `<option value="${c}">${c}</option>`).join("");
         }
 
-        // Render Matrix Table
         renderProdMatrixTable();
 
     } catch (err) {
@@ -3297,13 +3730,20 @@ async function loadAdminProductIntelligence() {
 }
 
 function handleProdFilterChange() {
+    const sortSel = document.getElementById("prodSortSelect");
     const catSelect = document.getElementById("prodCategoryFilterSelect");
     const searchInput = document.getElementById("prodSearchInput");
 
+    const newSort = sortSel ? sortSel.value : "best_selling";
     activeProdCategoryFilter = catSelect ? catSelect.value : "ALL";
     prodSearchTerm = searchInput ? searchInput.value.trim().toLowerCase() : "";
 
-    renderProdMatrixTable();
+    if (newSort !== activeProdSort) {
+        activeProdSort = newSort;
+        loadAdminProductIntelligence();
+    } else {
+        renderProdMatrixTable();
+    }
 }
 
 function renderProdMatrixTable() {
@@ -3316,39 +3756,43 @@ function renderProdMatrixTable() {
         const matchesSearch = !prodSearchTerm ||
             p.product_name.toLowerCase().includes(prodSearchTerm) ||
             p.product_id.toLowerCase().includes(prodSearchTerm) ||
-            p.brand.toLowerCase().includes(prodSearchTerm);
+            (p.brand && p.brand.toLowerCase().includes(prodSearchTerm));
         return matchesCat && matchesSearch;
     });
 
     if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="13" style="text-align:center; padding:2rem; color:var(--text-muted);">No products match the filter criteria.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="12" style="text-align:center; padding:2rem; color:var(--text-muted);">No products match the filter criteria.</td></tr>`;
         return;
     }
 
     tbody.innerHTML = filtered.map(p => {
-        const riskClass = `risk-${p.risk_state.toLowerCase().replace(/ /g, '-')}`;
-        const companionHtml = p.top_companion ? 
-            `<span style="color:#38bdf8; font-size:0.75rem;" title="${escapeHtml(p.top_companion.companion_name)}">${p.top_companion.companion_id} (${p.top_companion.co_purchases}x)</span>` : 
-            `<span style="color:var(--text-muted); font-size:0.75rem;">None</span>`;
+        const perfClass = `perf-indicator-pill ${(p.performance_indicator || 'healthy').toLowerCase().replace(/_/g, '-')}`;
+        const riskClass = `risk-${(p.inventory_risk || 'healthy').toLowerCase().replace(/ /g, '-')}`;
 
         return `
             <tr>
-                <td><strong style="color:#818cf8;">#${p.revenue_rank || '-'}</strong></td>
-                <td><span style="color:var(--text-muted);">#${p.volume_rank || '-'}</span></td>
                 <td><strong>${p.product_id}</strong></td>
                 <td>
-                    <div style="font-weight:600; color:var(--text-primary); max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escapeHtml(p.product_name)}">${escapeHtml(p.product_name)}</div>
+                    <div style="font-weight:600; color:var(--text-primary); max-width:210px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escapeHtml(p.product_name)}">
+                        ${escapeHtml(p.product_name)}
+                    </div>
                     <div style="font-size:0.72rem; color:var(--text-muted);">${escapeHtml(p.brand || '')}</div>
                 </td>
-                <td>${escapeHtml(p.category_name)}</td>
+                <td><span class="category-badge">${escapeHtml(p.category_name)}</span></td>
                 <td><strong>${formatMoney(p.price)}</strong></td>
-                <td>${p.stock_quantity}</td>
                 <td><strong>${p.units_sold}</strong></td>
                 <td><strong style="color:#34d399;">${formatMoney(p.revenue)}</strong></td>
-                <td>${p.avg_daily_sales}/day</td>
-                <td>⭐ ${p.avg_rating} <span style="color:var(--text-muted); font-size:0.72rem;">(${p.review_count})</span></td>
-                <td><span class="risk-badge ${riskClass}">${p.risk_state}</span></td>
-                <td>${companionHtml}</td>
+                <td>
+                    ⭐ ${p.avg_rating} <span style="font-size:0.72rem; color:var(--text-muted);">(${p.review_count})</span>
+                    ${p.mismatched_sentiment ? `<span title="Rating/Sentiment Discrepancy" style="cursor:help;">⚠</span>` : ''}
+                </td>
+                <td><strong style="font-size:0.95rem;">${p.stock_quantity}</strong></td>
+                <td>${p.sales_velocity} /day</td>
+                <td><span class="risk-badge ${riskClass}">${p.inventory_risk}</span></td>
+                <td><span class="${perfClass}">${(p.performance_indicator || 'HEALTHY').replace(/_/g, ' ')}</span></td>
+                <td>
+                    <button class="link-btn" style="font-size:0.75rem;" onclick="openReviewInspector('${p.product_id}')">Reviews &rarr;</button>
+                </td>
             </tr>
         `;
     }).join("");
@@ -3446,6 +3890,15 @@ window.handleProdFilterChange = handleProdFilterChange;
 
 window.loadAdminAiInsights = loadAdminAiInsights;
 window.filterAiInsights = filterAiInsights;
+
+// Phase 9 Window Bindings
+window.changeOverviewDateRange = changeOverviewDateRange;
+window.changeSalesDateRange = changeSalesDateRange;
+window.drillDownToLowStock = drillDownToLowStock;
+window.filterProductByCategoryName = filterProductByCategoryName;
+window.filterProductById = filterProductById;
+window.loadAdminSalesAnalytics = loadAdminSalesAnalytics;
+window.loadAdminAiRecommendations = loadAdminAiRecommendations;
 
 // Previous window bindings
 window.handleXaiContextChange = handleXaiContextChange;
