@@ -18,6 +18,7 @@ CREATE INDEX IF NOT EXISTS idx_cart_customer ON shopping_cart(customer_id);
 CREATE INDEX IF NOT EXISTS idx_wishlist_customer ON wishlist(customer_id);
 CREATE INDEX IF NOT EXISTS idx_session_events_customer ON session_events(customer_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_session_events_product ON session_events(product_id);
+CREATE INDEX IF NOT EXISTS idx_orders_status_date ON orders(order_status, order_date);
 
 
 -- ==========================================================

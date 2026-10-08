@@ -110,6 +110,7 @@ def get_products():
 
 
 @app.route("/api/product/<product_id>", methods=["GET"])
+@app.route("/api/products/<product_id>", methods=["GET"])
 def get_product_details(product_id):
     conn = get_db_connection()
     cursor = conn.cursor()

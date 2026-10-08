@@ -102,7 +102,7 @@ def checkout_cart(customer_id: str, payment_method: str = "CREDIT_CARD", simulat
         # Step 7: Commit Transaction
         conn.commit()
         print("[7] [COMMIT] Transaction successfully committed! All changes persisted.")
-        return {"status": "SUCCESS", "order_id": order_id, "amount": total_amount}
+        return {"status": "SUCCESS", "order_id": order_id, "amount": total_amount, "total_amount": total_amount}
 
     except Exception as e:
         conn.rollback()

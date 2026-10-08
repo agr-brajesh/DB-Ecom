@@ -1765,16 +1765,141 @@
                 <div id="admin-tab-dbms" class="admin-tab-pane">
                     <div class="admin-pane-header">
                         <div>
-                            <h2>DBMS Laboratory: Analytical Views &amp; SQL Console</h2>
-                            <p class="admin-subtitle">Live inspection of relational views, trigger verification, and sandboxed read-only SQL queries</p>
+                            <h2>DBMS Laboratory &amp; Architecture Showcase</h2>
+                            <p class="admin-subtitle">Live inspection of 3NF relational architecture, analytical views, trigger automation, ACID atomicity, and query execution plans</p>
                         </div>
-                        <span class="badge-pill-academic">Read-Only Engine Protection</span>
+                        <span class="badge-pill-academic">Sandboxed SQLite Engine</span>
                     </div>
 
-                    <!-- Analytical Views Section -->
+                    <!-- 0. EVALUATOR / VIVA GUIDED WALKTHROUGH (10 STEPS) -->
+                    <div class="admin-card" style="border: 1px solid rgba(99, 102, 241, 0.35); background: linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(13, 19, 34, 0.7) 100%);">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; flex-wrap:wrap; gap:0.5rem;">
+                            <div>
+                                <h3 style="color:#a5b4fc; margin-bottom:0.25rem;">🎓 Evaluator &amp; Viva Guided Demonstration (10-Point System Tour)</h3>
+                                <p class="view-intro" style="margin:0;">Click any step below to instantly demonstrate that architectural component of NexusAI:</p>
+                            </div>
+                            <span class="badge-pill-academic">Presentation Flow</span>
+                        </div>
+                        <div class="viva-stepper-grid">
+                            <div class="viva-step-card" onclick="jumpToVivaStep(1)">
+                                <div class="viva-step-num">1</div>
+                                <div class="viva-step-body">
+                                    <div class="viva-step-title">3NF Catalog Browsing</div>
+                                    <div class="viva-step-desc">45 normalized SKUs across 8 categories with live inventory and pricing.</div>
+                                </div>
+                            </div>
+                            <div class="viva-step-card" onclick="jumpToVivaStep(2)">
+                                <div class="viva-step-num">2</div>
+                                <div class="viva-step-body">
+                                    <div class="viva-step-title">Contextual AI Recs</div>
+                                    <div class="viva-step-desc">Multi-signal hybrid scoring: Apriori affinity, TF-IDF content similarity, search intent.</div>
+                                </div>
+                            </div>
+                            <div class="viva-step-card" onclick="jumpToVivaStep(3)">
+                                <div class="viva-step-num">3</div>
+                                <div class="viva-step-body">
+                                    <div class="viva-step-title">Explainable AI (XAI)</div>
+                                    <div class="viva-step-desc">Truthful, transparent "Why this recommendation?" provenance tracing.</div>
+                                </div>
+                            </div>
+                            <div class="viva-step-card" onclick="jumpToVivaStep(4)">
+                                <div class="viva-step-num">4</div>
+                                <div class="viva-step-body">
+                                    <div class="viva-step-title">Smart Cart Bundle</div>
+                                    <div class="viva-step-desc">Dynamic market basket cross-sell bundles with 10% co-purchase savings.</div>
+                                </div>
+                            </div>
+                            <div class="viva-step-card" onclick="jumpToVivaStep(5)">
+                                <div class="viva-step-num">5</div>
+                                <div class="viva-step-body">
+                                    <div class="viva-step-title">Executive Sales Analytics</div>
+                                    <div class="viva-step-desc">Real revenue trajectory SVG charts, category shares, and payment breakdown.</div>
+                                </div>
+                            </div>
+                            <div class="viva-step-card" onclick="jumpToVivaStep(6)">
+                                <div class="viva-step-num">6</div>
+                                <div class="viva-step-body">
+                                    <div class="viva-step-title">Inventory Intelligence</div>
+                                    <div class="viva-step-desc">Daily run-rate sales velocities, stock cover days, and restock queue.</div>
+                                </div>
+                            </div>
+                            <div class="viva-step-card" onclick="jumpToVivaStep(7)">
+                                <div class="viva-step-num">7</div>
+                                <div class="viva-step-body">
+                                    <div class="viva-step-title">NLP Review Sentiment</div>
+                                    <div class="viva-step-desc">Aspect theme extraction and rating-review mismatch detection.</div>
+                                </div>
+                            </div>
+                            <div class="viva-step-card" onclick="jumpToVivaStep(8)">
+                                <div class="viva-step-num">8</div>
+                                <div class="viva-step-body">
+                                    <div class="viva-step-title">Analytical SQL Views</div>
+                                    <div class="viva-step-desc">Live querying of v_market_basket, v_customer_purchase_summary, and performance.</div>
+                                </div>
+                            </div>
+                            <div class="viva-step-card" onclick="jumpToVivaStep(9)">
+                                <div class="viva-step-num">9</div>
+                                <div class="viva-step-body">
+                                    <div class="viva-step-title">EXPLAIN QUERY PLAN</div>
+                                    <div class="viva-step-desc">SQLite B-tree index scans and join optimization proofs.</div>
+                                </div>
+                            </div>
+                            <div class="viva-step-card" onclick="jumpToVivaStep(10)">
+                                <div class="viva-step-num">10</div>
+                                <div class="viva-step-body">
+                                    <div class="viva-step-title">ACID Checkout &amp; Rollback</div>
+                                    <div class="viva-step-desc">Atomic checkout COMMIT vs simulated failure ROLLBACK with state audit.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 1. RELATIONAL SCHEMA & NORMALIZATION ARCHITECTURE -->
                     <div class="admin-card">
-                        <h3>1. Analytical Database Views</h3>
-                        <p class="view-intro">Click any view to query live rows directly from SQLite:</p>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">
+                            <div>
+                                <h3 style="margin-bottom:0.25rem;">1. Relational Database Design &amp; 3NF/BCNF Normalization</h3>
+                                <p class="view-intro" style="margin:0;">11 normalized tables, referential constraints, and M:N relationship resolutions</p>
+                            </div>
+                            <span class="badge-pill-academic">PRAGMA foreign_keys = ON</span>
+                        </div>
+                        <div class="dbms-concepts-grid">
+                            <div class="dbms-concept-card">
+                                <div class="concept-title">Entity-Relationship &amp; 11 Tables</div>
+                                <div class="concept-desc">Entities: <code>categories</code>, <code>products</code>, <code>customers</code>, <code>orders</code>, <code>order_items</code>, <code>payments</code>, <code>shopping_cart</code>, <code>reviews</code>, <code>search_history</code>, <code>wishlist</code>, <code>session_events</code>.</div>
+                            </div>
+                            <div class="dbms-concept-card">
+                                <div class="concept-title">Primary &amp; Foreign Keys</div>
+                                <div class="concept-desc">Explicit PKs across all tables. Referential integrity with <code>ON DELETE CASCADE</code> (orders &rarr; items, cart, wishlist) and <code>ON DELETE RESTRICT</code> (categories &rarr; products).</div>
+                            </div>
+                            <div class="dbms-concept-card">
+                                <div class="concept-title">Domain &amp; CHECK Constraints</div>
+                                <div class="concept-desc"><code>price &gt;= 0</code>, <code>stock_quantity &gt;= 0</code>, <code>rating BETWEEN 1 AND 5</code>, <code>order_status IN ('PENDING', 'PROCESSING', 'COMPLETED', 'CANCELLED')</code>.</div>
+                            </div>
+                            <div class="dbms-concept-card">
+                                <div class="concept-title">3NF / BCNF Normalization</div>
+                                <div class="concept-desc"><strong>1NF</strong>: Atomic scalar columns.<br><strong>2NF</strong>: No partial key dependencies.<br><strong>3NF</strong>: No transitive functional dependencies.<br><strong>BCNF</strong>: Every determinant is a candidate key.</div>
+                            </div>
+                            <div class="dbms-concept-card">
+                                <div class="concept-title">M:N Relationship Decomposition</div>
+                                <div class="concept-desc">Customer &harr; Product resolved via associative bridge tables: <code>order_items</code> (with quantity &amp; price snapshot), <code>shopping_cart</code>, <code>wishlist</code>, and <code>reviews</code>.</div>
+                            </div>
+                            <div class="dbms-concept-card">
+                                <div class="concept-title">Active Database Triggers</div>
+                                <div class="concept-desc"><code>trg_decrement_product_stock</code> automatically reduces product inventory after order insertion; <code>trg_validate_stock_before_order</code> aborts overdrawn transactions.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. Analytical Views Section -->
+                    <div class="admin-card" id="dbms-views-card">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; flex-wrap:wrap; gap:0.5rem;">
+                            <div>
+                                <h3 style="margin-bottom:0.25rem;">2. Analytical Database Views</h3>
+                                <p class="view-intro" style="margin:0;">Decouple complex analytical SQL queries from operational transactional tables:</p>
+                            </div>
+                            <span class="badge-pill-academic">4 Active Views</span>
+                        </div>
                         <div class="view-selector-bar">
                             <button class="view-btn active" data-view="v_market_basket">v_market_basket</button>
                             <button class="view-btn" data-view="v_customer_purchase_summary">v_customer_purchase_summary</button>
@@ -1789,18 +1914,25 @@
                         </div>
                     </div>
 
-                    <!-- Live SQL Console -->
-                    <div class="admin-card">
-                        <h3>2. Live Read-Only SQL Query Runner</h3>
-                        <p class="view-intro">Execute custom `SELECT`, `EXPLAIN`, or `PRAGMA` queries against `ecommerce.db`:</p>
+                    <!-- 3. Live SQL Console -->
+                    <div class="admin-card" id="dbms-sql-card">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; flex-wrap:wrap; gap:0.5rem;">
+                            <div>
+                                <h3 style="margin-bottom:0.25rem;">3. Live Read-Only SQL Query Runner &amp; Query Plans</h3>
+                                <p class="view-intro" style="margin:0;">Execute custom <code>SELECT</code>, <code>EXPLAIN QUERY PLAN</code>, or <code>PRAGMA</code> queries against <code>ecommerce.db</code>:</p>
+                            </div>
+                            <span class="badge-pill-academic">Read-Only Engine Guard</span>
+                        </div>
 
                         <!-- Presets -->
                         <div class="sql-preset-bar">
                             <span class="preset-label">Query Presets:</span>
                             <button class="sql-preset-btn" data-query="SELECT category_id, category_name FROM categories;">All Categories</button>
-                            <button class="sql-preset-btn" data-query="SELECT product_name, price, stock_quantity FROM products WHERE stock_quantity < 100;">Low Stock Products</button>
+                            <button class="sql-preset-btn" data-query="SELECT product_name, price, stock_quantity FROM products WHERE stock_quantity &lt; 100;">Low Stock Products</button>
                             <button class="sql-preset-btn" data-query="SELECT * FROM v_product_performance ORDER BY units_sold DESC LIMIT 5;">Top 5 Best Sellers</button>
-                            <button class="sql-preset-btn" data-query="EXPLAIN QUERY PLAN SELECT * FROM order_items WHERE order_id = 'ORD101';">Index Query Plan</button>
+                            <button class="sql-preset-btn" data-query="EXPLAIN QUERY PLAN SELECT * FROM order_items WHERE order_id = 'ORD101';">EXPLAIN: Order Items Index</button>
+                            <button class="sql-preset-btn" data-query="EXPLAIN QUERY PLAN SELECT * FROM orders WHERE customer_id = 'C101';">EXPLAIN: Customer Orders Index</button>
+                            <button class="sql-preset-btn" data-query="PRAGMA foreign_key_check;">PRAGMA: Foreign Key Audit</button>
                         </div>
 
                         <div class="sql-editor-wrap">
@@ -1818,12 +1950,12 @@
                         </div>
                     </div>
 
-                    <!-- 3. ACID Transaction Simulator (DBMS Lab Demonstration) -->
-                    <div class="admin-card">
+                    <!-- 4. ACID Transaction Simulator (DBMS Lab Demonstration) -->
+                    <div class="admin-card" id="dbms-acid-card">
                         <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">
                             <div>
-                                <h3 style="margin-bottom:0.35rem;">3. ACID Transaction &amp; Atomicity Simulator</h3>
-                                <p class="view-intro">Execute simulated database transactions against SQLite. Compare `COMMIT` persistence against simulated network timeout `ROLLBACK` to inspect trigger actions and inventory integrity.</p>
+                                <h3 style="margin-bottom:0.35rem;">4. ACID Transaction &amp; Atomicity Simulator</h3>
+                                <p class="view-intro">Execute live transactions against SQLite. Compare <code>COMMIT</code> persistence against simulated network failure <code>ROLLBACK</code> to verify trigger execution, stock conservation, and zero partial writes.</p>
                             </div>
                             <span class="badge-pill-academic">BEGIN &rarr; COMMIT / ROLLBACK</span>
                         </div>
@@ -1834,7 +1966,7 @@
                                 <select id="adminSimCustomerSelect" class="sort-select" style="width:100%;">
                                     <!-- Populated dynamically via JS -->
                                 </select>
-                                <span style="display:block; font-size:0.75rem; color:var(--text-muted); margin-top:0.35rem;">Uses active shopping cart items for this customer</span>
+                                <span style="display:block; font-size:0.75rem; color:var(--text-muted); margin-top:0.35rem;">Select customer to simulate atomic order placement</span>
                             </div>
                             <div>
                                 <label style="display:block; font-size:0.85rem; font-weight:600; color:var(--text-secondary); margin-bottom:0.5rem;">Transaction Execution Mode:</label>
@@ -1845,7 +1977,7 @@
                                     </label>
                                     <label class="radio-label">
                                         <input type="radio" name="adminSimFailMode" value="true">
-                                        <span style="font-size:0.85rem;"><strong>Simulate Payment Gateway Failure (ROLLBACK)</strong> &mdash; Timeout triggers rollback, stock restored</span>
+                                        <span style="font-size:0.85rem;"><strong>Simulate Payment Gateway Failure (ROLLBACK)</strong> &mdash; Exception rolls back all changes; stock restored</span>
                                     </label>
                                 </div>
                             </div>
@@ -1857,6 +1989,29 @@
                                 Execute ACID Transaction
                             </button>
                             <span id="adminSimStatusBadge" class="audit-status" style="display:none;"></span>
+                        </div>
+
+                        <!-- Before / After State Comparison Grid -->
+                        <div id="adminSimStateWrap" class="checkout-audit-log" style="display:none; margin-top:1.25rem;">
+                            <div class="audit-log-header">
+                                <span>Database State Audit: Before vs After Transaction</span>
+                                <span class="audit-status" id="adminSimStateDeltaBadge">Verified</span>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="data-table" style="margin:0;">
+                                    <thead>
+                                        <tr>
+                                            <th>Database Entity</th>
+                                            <th>Target Record</th>
+                                            <th>Pre-Transaction State</th>
+                                            <th>Post-Transaction State</th>
+                                            <th>Delta</th>
+                                            <th>Integrity Verdict</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="adminSimStateBody"></tbody>
+                                </table>
+                            </div>
                         </div>
 
                         <!-- Audit Console Output -->
