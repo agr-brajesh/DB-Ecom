@@ -447,6 +447,19 @@ class ProductRecommender:
             current_product_id=current_product_id
         )
 
+        # ---------------------------------------------------------
+        # PHASE 8: REVIEW INTELLIGENCE METADATA SIGNAL
+        # ---------------------------------------------------------
+        for rec in enriched_recommendations:
+            pid = rec.get("product_id")
+            prod_meta = self.catalog.get(pid)
+            if prod_meta:
+                r_rating = prod_meta.get("avg_rating", 4.5)
+                r_count = prod_meta.get("review_count", 0)
+                norm_rat = min_max_scale(r_rating, 1.0, 5.0)
+                norm_cnt = log_scale(r_count, self.catalog.max_reviews)
+                rec["review_quality_score"] = round(0.70 * norm_rat + 0.30 * norm_cnt, 2)
+
         out = {
             "status": "success",
             "context_type": profile_name,

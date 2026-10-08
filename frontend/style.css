@@ -4013,4 +4013,284 @@ input, select, textarea {
     border-color: var(--primary);
 }
 
+/* ==========================================================
+   PHASE 8: AI REVIEW INTELLIGENCE & SENTIMENT ANALYSIS STYLES
+   ========================================================== */
+
+/* Customer-Facing AI Review Intelligence in Product Modal */
+.review-intel-card {
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.9) 100%);
+    border: 1px solid rgba(99, 102, 241, 0.25);
+    border-radius: var(--radius-md);
+    padding: 1.25rem;
+    margin-top: 1.5rem;
+    margin-bottom: 1.25rem;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+    position: relative;
+    overflow: hidden;
+}
+
+.review-intel-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: linear-gradient(180deg, var(--accent-emerald), var(--primary));
+}
+
+.review-intel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.85rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.review-intel-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.review-intel-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    font-family: var(--font-heading);
+    margin: 0;
+}
+
+.review-summary-quote {
+    background: rgba(255, 255, 255, 0.03);
+    border-left: 3px solid var(--accent-emerald);
+    padding: 0.85rem 1rem;
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    margin-bottom: 1rem;
+    font-size: 0.88rem;
+    color: #e2e8f0;
+    line-height: 1.5;
+    font-style: normal;
+}
+
+.health-scorecard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.health-stat-pill {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    padding: 0.65rem 0.85rem;
+    display: flex;
+    flex-direction: column;
+}
+
+.health-stat-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+}
+
+.health-stat-val {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-top: 0.2rem;
+}
+
+/* Segmented Sentiment Bar */
+.sentiment-bar-wrapper {
+    margin-bottom: 1rem;
+}
+
+.sentiment-bar-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.35rem;
+}
+
+.sentiment-bar-track {
+    display: flex;
+    height: 10px;
+    border-radius: 999px;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.sentiment-seg-pos {
+    background: #10b981;
+    transition: width 0.3s ease;
+}
+
+.sentiment-seg-neu {
+    background: #94a3b8;
+    transition: width 0.3s ease;
+}
+
+.sentiment-seg-neg {
+    background: #f43f5e;
+    transition: width 0.3s ease;
+}
+
+.sentiment-legend {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.72rem;
+    margin-top: 0.35rem;
+    color: var(--text-muted);
+}
+
+.sentiment-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.sentiment-legend-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+/* Aspect Themes Breakdown */
+.themes-comparison-box {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+@media (max-width: 600px) {
+    .themes-comparison-box {
+        grid-template-columns: 1fr;
+    }
+}
+
+.themes-col {
+    background: rgba(15, 23, 42, 0.5);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    padding: 0.75rem;
+}
+
+.themes-col-title {
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.theme-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 0.25rem 0.55rem;
+    border-radius: 999px;
+    margin: 0.2rem 0.2rem 0.2rem 0;
+}
+
+.theme-chip-pos {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.theme-chip-neg {
+    background: rgba(244, 63, 94, 0.15);
+    color: #fb7185;
+    border: 1px solid rgba(244, 63, 94, 0.3);
+}
+
+/* Review Signals Badge */
+.review-signal-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 0.25rem 0.6rem;
+    border-radius: 999px;
+    background: rgba(245, 158, 11, 0.15);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.35);
+}
+
+.review-signal-pill.consistent {
+    background: rgba(16, 185, 129, 0.1);
+    color: #34d399;
+    border-color: rgba(16, 185, 129, 0.2);
+}
+
+/* Admin Review Intelligence Styles */
+.review-filter-bar {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.25rem;
+}
+
+.review-filter-btn {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-secondary);
+    padding: 0.45rem 0.85rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.82rem;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.review-filter-btn:hover {
+    background: var(--bg-card-hover);
+    color: var(--text-primary);
+}
+
+.review-filter-btn.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+    font-weight: 600;
+}
+
+.review-inspector-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(4px);
+    z-index: 2000;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.review-inspector-dialog {
+    width: 680px;
+    max-width: 95vw;
+    height: 100%;
+    background: var(--bg-surface);
+    overflow-y: auto;
+    padding: 2rem;
+    box-shadow: -10px 0 30px rgba(0, 0, 0, 0.6);
+    border-left: 1px solid var(--border-card);
+    display: flex;
+    flex-direction: column;
+}
+
+
 

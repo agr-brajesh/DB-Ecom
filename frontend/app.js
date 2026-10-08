@@ -974,7 +974,96 @@ async function renderProductModalDetails(prod) {
         `;
     }
 
-    // Customer Reviews
+    // Phase 8: AI Review Intelligence & Health Scorecard
+    let aiReviewIntelligenceHtml = "";
+    const intel = prod.review_intelligence;
+    if (intel && intel.review_count > 0) {
+        const posPct = Math.round((intel.sentiment ? intel.sentiment.positive : 0) * 100);
+        const neuPct = Math.round((intel.sentiment ? intel.sentiment.neutral : 0) * 100);
+        const negPct = Math.round((intel.sentiment ? intel.sentiment.negative : 0) * 100);
+        const scoreVal = intel.sentiment_score !== undefined ? intel.sentiment_score.toFixed(2) : "0.50";
+
+        const posThemesHtml = (intel.positive_themes && intel.positive_themes.length > 0)
+            ? intel.positive_themes.map(t => `<span class="theme-chip theme-chip-pos">✓ ${escapeHtml(t)}</span>`).join("")
+            : '<span style="color:var(--text-muted); font-size:0.75rem;">No consensus positive themes yet</span>';
+
+        const negThemesHtml = (intel.negative_themes && intel.negative_themes.length > 0)
+            ? intel.negative_themes.map(t => `<span class="theme-chip theme-chip-neg">⚠ ${escapeHtml(t)}</span>`).join("")
+            : '<span style="color:var(--text-muted); font-size:0.75rem;">None reported</span>';
+
+        const trendLabel = intel.recent_sentiment ? intel.recent_sentiment.trend_label : "⚖ Stable";
+
+        aiReviewIntelligenceHtml = `
+            <div class="review-intel-card">
+                <div class="review-intel-header">
+                    <div class="review-intel-title-wrap">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><polyline points="9 10 12 12 15 10"/></svg>
+                        <h4 class="review-intel-title">AI Review Summary &amp; Product Health</h4>
+                    </div>
+                    <span class="badge-pill-light" style="font-size:0.7rem; background:rgba(99,102,241,0.15); color:#a5b4fc; border:1px solid rgba(99,102,241,0.3);">
+                        NLP Verified &bull; ${intel.review_count} Reviews
+                    </span>
+                </div>
+
+                <div class="review-summary-quote">
+                    ${escapeHtml(intel.ai_review_summary || 'Customer review summary')}
+                </div>
+
+                <div class="health-scorecard-grid">
+                    <div class="health-stat-pill">
+                        <span class="health-stat-label">Community Rating</span>
+                        <div class="health-stat-val">★ ${intel.average_rating} <span style="font-size:0.72rem; color:var(--text-muted); font-weight:normal;">/ 5.0</span></div>
+                    </div>
+                    <div class="health-stat-pill">
+                        <span class="health-stat-label">Sentiment Score</span>
+                        <div class="health-stat-val" style="color:#38bdf8;">${scoreVal} <span style="font-size:0.72rem; color:var(--text-muted); font-weight:normal;">/ 1.0</span></div>
+                    </div>
+                    <div class="health-stat-pill">
+                        <span class="health-stat-label">Recent Trend</span>
+                        <div class="health-stat-val" style="font-size:0.85rem;">${trendLabel}</div>
+                    </div>
+                    <div class="health-stat-pill">
+                        <span class="health-stat-label">Review Volume</span>
+                        <div class="health-stat-val">${intel.review_count} <span style="font-size:0.72rem; color:var(--text-muted); font-weight:normal;">verified</span></div>
+                    </div>
+                </div>
+
+                <div class="sentiment-bar-wrapper">
+                    <div class="sentiment-bar-header">
+                        <span>Sentiment Polarity Distribution</span>
+                        <span><strong>${posPct}%</strong> Positive &bull; <strong>${neuPct}%</strong> Neutral &bull; <strong>${negPct}%</strong> Negative</span>
+                    </div>
+                    <div class="sentiment-bar-track">
+                        <div class="sentiment-seg-pos" style="width: ${posPct}%;" title="Positive: ${posPct}%"></div>
+                        <div class="sentiment-seg-neu" style="width: ${neuPct}%;" title="Neutral: ${neuPct}%"></div>
+                        <div class="sentiment-seg-neg" style="width: ${negPct}%;" title="Negative: ${negPct}%"></div>
+                    </div>
+                    <div class="sentiment-legend">
+                        <div class="sentiment-legend-item"><div class="sentiment-legend-dot" style="background:#10b981;"></div> Positive (${posPct}%)</div>
+                        <div class="sentiment-legend-item"><div class="sentiment-legend-dot" style="background:#94a3b8;"></div> Neutral (${neuPct}%)</div>
+                        <div class="sentiment-legend-item"><div class="sentiment-legend-dot" style="background:#f43f5e;"></div> Negative (${negPct}%)</div>
+                    </div>
+                </div>
+
+                <div class="themes-comparison-box">
+                    <div class="themes-col">
+                        <div class="themes-col-title" style="color:#34d399;">
+                            <span>✓ Customers Like</span>
+                        </div>
+                        <div>${posThemesHtml}</div>
+                    </div>
+                    <div class="themes-col">
+                        <div class="themes-col-title" style="color:#fb7185;">
+                            <span>⚠ Watch Out For / Complaints</span>
+                        </div>
+                        <div>${negThemesHtml}</div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    // Customer Reviews (Preserved & accessible)
     let reviewsHtml = `
         <div class="detail-extra-section">
             <h4>Verified Customer Reviews (${prod.reviews ? prod.reviews.length : 0})</h4>
@@ -1052,6 +1141,7 @@ async function renderProductModalDetails(prod) {
             <!-- Dynamically loaded contextual intelligence -->
         </div>
 
+        ${aiReviewIntelligenceHtml}
         ${reviewsHtml}
     `;
 
@@ -1968,6 +2058,8 @@ function switchAdminTab(tabName) {
         loadAdminInventoryIntelligence();
     } else if (tabName === "product-intelligence") {
         loadAdminProductIntelligence();
+    } else if (tabName === "review-intelligence") {
+        loadAdminReviewIntelligence();
     } else if (tabName === "ai-insights") {
         loadAdminAiInsights();
     } else if (tabName === "inventory") {
@@ -3359,5 +3451,327 @@ window.filterAiInsights = filterAiInsights;
 window.handleXaiContextChange = handleXaiContextChange;
 window.initXaiAuditorControls = initXaiAuditorControls;
 window.runXaiAudit = runXaiAudit;
+
+// ==========================================================
+// PHASE 8: AI REVIEW INTELLIGENCE & SENTIMENT ANALYSIS CONTROLLER
+// ==========================================================
+
+let activeReviewFilter = "all";
+let cachedReviewCatalog = [];
+
+async function loadAdminReviewIntelligence(filter = "all") {
+    activeReviewFilter = filter;
+    const tableBody = document.getElementById("revCatalogTableBody");
+    if (tableBody) {
+        tableBody.innerHTML = `<tr><td colspan="12" style="text-align:center; padding:2rem; color:var(--text-muted);"><div class="pulse-dot" style="margin:0 auto 0.5rem auto;"></div>Executing explainable NLP sentiment parsing across product reviews...</td></tr>`;
+    }
+
+    try {
+        const res = await fetch(`${API_BASE}/api/admin/review-intelligence?filter=${encodeURIComponent(filter)}`);
+        const json = await res.json();
+        if (json.status !== "success") {
+            if (tableBody) tableBody.innerHTML = `<tr><td colspan="12" style="text-align:center; color:var(--accent-rose);">Failed to load review intelligence: ${escapeHtml(json.message || 'Unknown error')}</td></tr>`;
+            return;
+        }
+
+        const kpis = json.kpis || {};
+        const revTotalEl = document.getElementById("revKpiTotalReviews");
+        const revAvgEl = document.getElementById("revKpiAvgSentiment");
+        const revPosEl = document.getElementById("revKpiPosShare");
+        const revMisEl = document.getElementById("revKpiMismatches");
+
+        if (revTotalEl) revTotalEl.innerText = kpis.total_reviews_analyzed !== undefined ? kpis.total_reviews_analyzed : "--";
+        if (revAvgEl) revAvgEl.innerText = kpis.catalog_avg_sentiment_score !== undefined ? kpis.catalog_avg_sentiment_score.toFixed(2) : "--";
+        if (revPosEl) revPosEl.innerText = kpis.positive_reviews_share !== undefined ? `${kpis.positive_reviews_share}%` : "--%";
+        if (revMisEl) revMisEl.innerText = kpis.total_mismatches_detected !== undefined ? `${kpis.total_mismatches_detected} flagged` : "--";
+
+        cachedReviewCatalog = json.products || [];
+        renderReviewCatalogTable(cachedReviewCatalog);
+    } catch (err) {
+        console.error("Error loading admin review intelligence:", err);
+        if (tableBody) tableBody.innerHTML = `<tr><td colspan="12" style="text-align:center; color:var(--accent-rose);">Error connecting to review intelligence API.</td></tr>`;
+    }
+}
+
+function renderReviewCatalogTable(products) {
+    const tableBody = document.getElementById("revCatalogTableBody");
+    if (!tableBody) return;
+
+    if (!products || products.length === 0) {
+        tableBody.innerHTML = `<tr><td colspan="12" style="text-align:center; padding:2.5rem; color:var(--text-muted);">No products match the selected review intelligence filter.</td></tr>`;
+        return;
+    }
+
+    tableBody.innerHTML = products.map(prod => {
+        const posPct = Math.round((prod.sentiment ? prod.sentiment.positive : 0) * 100);
+        const neuPct = Math.round((prod.sentiment ? prod.sentiment.neutral : 0) * 100);
+        const negPct = Math.round((prod.sentiment ? prod.sentiment.negative : 0) * 100);
+        const scoreVal = prod.sentiment_score !== undefined ? prod.sentiment_score.toFixed(2) : "0.50";
+
+        // Positive theme chips
+        const posThemes = (prod.positive_themes && prod.positive_themes.length > 0)
+            ? prod.positive_themes.slice(0, 2).map(t => `<span class="theme-chip theme-chip-pos" style="font-size:0.68rem; padding:0.15rem 0.4rem;">✓ ${escapeHtml(t)}</span>`).join(" ")
+            : '<span style="color:var(--text-muted); font-size:0.75rem;">None</span>';
+
+        // Negative theme chips
+        const negThemes = (prod.negative_themes && prod.negative_themes.length > 0)
+            ? prod.negative_themes.slice(0, 2).map(t => `<span class="theme-chip theme-chip-neg" style="font-size:0.68rem; padding:0.15rem 0.4rem;">⚠ ${escapeHtml(t)}</span>`).join(" ")
+            : '<span style="color:var(--text-muted); font-size:0.75rem;">None</span>';
+
+        // Review signal / mismatch badge
+        let signalBadge = "";
+        if (prod.has_mismatch) {
+            signalBadge = `<span class="review-signal-pill" title="${prod.mismatch_count} review rating/text mismatch signal(s)">⚠️ Mismatch (${prod.mismatch_count})</span>`;
+        } else {
+            signalBadge = `<span class="review-signal-pill consistent">✓ Consistent</span>`;
+        }
+
+        // Trend
+        const trend = prod.trend || "STABLE";
+        let trendIcon = "⚖ Stable";
+        if (trend === "IMPROVING") trendIcon = `<span style="color:#34d399; font-weight:600;">📈 Improving</span>`;
+        else if (trend === "DECLINING") trendIcon = `<span style="color:#fb7185; font-weight:600;">📉 Declining</span>`;
+
+        return `
+            <tr>
+                <td><strong style="font-family:monospace; color:#818cf8;">${prod.product_id}</strong></td>
+                <td>
+                    <div style="font-weight:600; color:var(--text-primary); cursor:pointer;" onclick="openAdminReviewInspector('${prod.product_id}')">
+                        ${escapeHtml(prod.product_name)}
+                    </div>
+                </td>
+                <td><span style="font-size:0.78rem; color:var(--text-secondary);">${escapeHtml(prod.category_name)}</span></td>
+                <td>
+                    <div style="display:flex; align-items:center; gap:0.25rem;">
+                        <span style="color:#fbbf24;">★</span>
+                        <strong>${prod.average_rating}</strong>
+                    </div>
+                </td>
+                <td><strong>${prod.review_count}</strong></td>
+                <td style="min-width:140px;">
+                    <div style="font-size:0.72rem; margin-bottom:0.25rem; color:var(--text-secondary);">
+                        <span style="color:#34d399;">${posPct}%</span> &bull; 
+                        <span style="color:#94a3b8;">${neuPct}%</span> &bull; 
+                        <span style="color:#fb7185;">${negPct}%</span>
+                    </div>
+                    <div class="sentiment-bar-track" style="height:6px;">
+                        <div class="sentiment-seg-pos" style="width:${posPct}%;"></div>
+                        <div class="sentiment-seg-neu" style="width:${neuPct}%;"></div>
+                        <div class="sentiment-seg-neg" style="width:${negPct}%;"></div>
+                    </div>
+                </td>
+                <td>
+                    <strong style="color:${prod.sentiment_score >= 0.75 ? '#34d399' : (prod.sentiment_score <= 0.45 ? '#fb7185' : '#38bdf8')};">
+                        ${scoreVal}
+                    </strong>
+                </td>
+                <td>${posThemes}</td>
+                <td>${negThemes}</td>
+                <td><span style="font-size:0.78rem;">${trendIcon}</span></td>
+                <td>${signalBadge}</td>
+                <td>
+                    <button class="btn-primary" style="padding:0.3rem 0.65rem; font-size:0.75rem;" onclick="openAdminReviewInspector('${prod.product_id}')">
+                        Inspect
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join("");
+}
+
+function filterReviewCatalog(filterType) {
+    document.querySelectorAll(".review-filter-btn").forEach(btn => {
+        btn.classList.toggle("active", btn.dataset.revFilter === filterType);
+    });
+    loadAdminReviewIntelligence(filterType);
+}
+
+function handleReviewSearchInput() {
+    const query = (document.getElementById("revSearchInput")?.value || "").trim().toLowerCase();
+    if (!query) {
+        renderReviewCatalogTable(cachedReviewCatalog);
+        return;
+    }
+    const filtered = cachedReviewCatalog.filter(p => 
+        p.product_id.toLowerCase().includes(query) ||
+        p.product_name.toLowerCase().includes(query) ||
+        p.category_name.toLowerCase().includes(query)
+    );
+    renderReviewCatalogTable(filtered);
+}
+
+async function openAdminReviewInspector(productId) {
+    const modal = document.getElementById("adminReviewInspectorModal");
+    const content = document.getElementById("inspectorContent");
+    const nameEl = document.getElementById("inspectorProdName");
+    const catEl = document.getElementById("inspectorProdCategory");
+
+    if (modal) modal.style.display = "flex";
+    if (content) {
+        content.innerHTML = `<div style="text-align:center; padding:3rem; color:var(--text-muted);"><div class="pulse-dot" style="margin:0 auto 1rem auto;"></div>Loading product review intelligence and NLP telemetry...</div>`;
+    }
+
+    try {
+        const res = await fetch(`${API_BASE}/api/admin/product/${productId}/review-intelligence`);
+        const json = await res.json();
+        if (json.status !== "success") {
+            if (content) content.innerHTML = `<p style="color:var(--accent-rose);">Failed to load product review intelligence.</p>`;
+            return;
+        }
+
+        if (nameEl) nameEl.innerText = json.product_name;
+        if (catEl) catEl.innerHTML = `SKU: <strong>${json.product_id}</strong> &bull; Category: ${escapeHtml(json.category_name)} &bull; Brand: ${escapeHtml(json.brand || 'Gear')}`;
+
+        const posPct = Math.round((json.sentiment ? json.sentiment.positive : 0) * 100);
+        const neuPct = Math.round((json.sentiment ? json.sentiment.neutral : 0) * 100);
+        const negPct = Math.round((json.sentiment ? json.sentiment.negative : 0) * 100);
+        const scoreVal = json.sentiment_score !== undefined ? json.sentiment_score.toFixed(2) : "0.50";
+
+        // Mismatches banner
+        let mismatchBannerHtml = "";
+        if (json.mismatches && json.mismatches.length > 0) {
+            mismatchBannerHtml = `
+                <div style="background:rgba(245, 158, 11, 0.12); border:1px solid rgba(245, 158, 11, 0.35); border-radius:var(--radius-sm); padding:0.85rem; margin-bottom:1.25rem;">
+                    <div style="display:flex; align-items:center; gap:0.4rem; color:#fbbf24; font-weight:700; font-size:0.82rem; margin-bottom:0.35rem;">
+                        <span>⚠️ Review Signals: ${json.mismatches.length} Rating / Text Disagreement(s) Flagged</span>
+                    </div>
+                    <p style="font-size:0.78rem; color:var(--text-secondary); margin-bottom:0.5rem;">
+                        These reviews have an inconsistency between the star rating and comment valence (e.g., 5 stars with complaints, or 1 star with praises):
+                    </p>
+                    <ul style="margin-left:1.2rem; font-size:0.78rem; color:#fde68a; display:flex; flex-direction:column; gap:0.25rem;">
+                        ${json.mismatches.map(m => `
+                            <li><strong>${escapeHtml(m.customer_name)}</strong> (★${m.rating}): ${escapeHtml(m.reason)}</li>
+                        `).join("")}
+                    </ul>
+                </div>
+            `;
+        }
+
+        // Reviews list
+        let reviewsListHtml = "";
+        if (json.reviews && json.reviews.length > 0) {
+            reviewsListHtml = json.reviews.map(r => {
+                let sentColor = "#94a3b8";
+                let sentBg = "rgba(148, 163, 184, 0.15)";
+                if (r.sentiment === "POSITIVE") {
+                    sentColor = "#34d399";
+                    sentBg = "rgba(16, 185, 129, 0.15)";
+                } else if (r.sentiment === "NEGATIVE") {
+                    sentColor = "#fb7185";
+                    sentBg = "rgba(244, 63, 94, 0.15)";
+                }
+
+                const themesChips = (r.aspect_themes && r.aspect_themes.length > 0)
+                    ? r.aspect_themes.map(t => `<span class="theme-chip" style="font-size:0.7rem; background:rgba(255,255,255,0.06); color:var(--text-secondary);">${escapeHtml(t)}</span>`).join(" ")
+                    : "";
+
+                let mismatchAlert = "";
+                if (r.is_mismatch) {
+                    mismatchAlert = `
+                        <div style="margin-top:0.4rem; font-size:0.75rem; color:#fbbf24; background:rgba(245,158,11,0.1); padding:0.3rem 0.5rem; border-radius:var(--radius-sm); border:1px solid rgba(245,158,11,0.25);">
+                            ⚠️ Review Signal: ${escapeHtml(r.mismatch_reason || 'Disagreement detected')}
+                        </div>
+                    `;
+                }
+
+                return `
+                    <div style="background:var(--bg-card); border:1px solid var(--border-subtle); border-radius:var(--radius-sm); padding:0.85rem; margin-bottom:0.75rem;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.35rem;">
+                            <div>
+                                <strong style="font-size:0.85rem; color:var(--text-primary);">${escapeHtml(r.customer_name || 'Customer')}</strong>
+                                <span style="font-size:0.75rem; color:var(--text-muted); margin-left:0.5rem;">${r.review_date || ''}</span>
+                            </div>
+                            <div style="display:flex; align-items:center; gap:0.5rem;">
+                                <span style="font-size:0.8rem; color:#fbbf24;">${renderStars(r.rating)}</span>
+                                <span style="font-size:0.7rem; font-weight:700; color:${sentColor}; background:${sentBg}; padding:0.15rem 0.45rem; border-radius:999px;">
+                                    ${r.sentiment} (${r.sentiment_score !== undefined ? r.sentiment_score.toFixed(2) : ''})
+                                </span>
+                            </div>
+                        </div>
+                        <p style="font-size:0.82rem; color:#cbd5e1; line-height:1.45; margin-bottom:0.35rem;">
+                            "${escapeHtml(r.comment || 'No written comment.')}"
+                        </p>
+                        ${themesChips ? `<div style="margin-top:0.35rem;">${themesChips}</div>` : ''}
+                        ${mismatchAlert}
+                    </div>
+                `;
+            }).join("");
+        } else {
+            reviewsListHtml = `<p style="color:var(--text-muted); font-size:0.85rem; text-align:center; padding:1.5rem;">No reviews recorded for this product yet.</p>`;
+        }
+
+        if (content) {
+            content.innerHTML = `
+                <!-- Summary Quote -->
+                <div class="review-summary-quote" style="margin-bottom:1.25rem;">
+                    <strong>AI Review Summary:</strong> ${escapeHtml(json.ai_review_summary || 'No review summary available.')}
+                </div>
+
+                ${mismatchBannerHtml}
+
+                <!-- Scorecard Cards -->
+                <div class="health-scorecard-grid" style="margin-bottom:1.25rem;">
+                    <div class="health-stat-pill">
+                        <span class="health-stat-label">Rating</span>
+                        <div class="health-stat-val">★ ${json.average_rating}</div>
+                    </div>
+                    <div class="health-stat-pill">
+                        <span class="health-stat-label">Sentiment Score</span>
+                        <div class="health-stat-val" style="color:#38bdf8;">${scoreVal}</div>
+                    </div>
+                    <div class="health-stat-pill">
+                        <span class="health-stat-label">Recent Trend</span>
+                        <div class="health-stat-val" style="font-size:0.82rem;">${json.recent_sentiment ? json.recent_sentiment.trend_label : 'Stable'}</div>
+                    </div>
+                    <div class="health-stat-pill">
+                        <span class="health-stat-label">Reviews</span>
+                        <div class="health-stat-val">${json.review_count}</div>
+                    </div>
+                </div>
+
+                <!-- Sentiment Bar -->
+                <div class="sentiment-bar-wrapper" style="margin-bottom:1.5rem;">
+                    <div class="sentiment-bar-header">
+                        <span>Sentiment Polarity</span>
+                        <span><strong>${posPct}%</strong> Pos &bull; <strong>${neuPct}%</strong> Neu &bull; <strong>${negPct}%</strong> Neg</span>
+                    </div>
+                    <div class="sentiment-bar-track" style="height:8px;">
+                        <div class="sentiment-seg-pos" style="width:${posPct}%;"></div>
+                        <div class="sentiment-seg-neu" style="width:${neuPct}%;"></div>
+                        <div class="sentiment-seg-neg" style="width:${negPct}%;"></div>
+                    </div>
+                </div>
+
+                <!-- Individual Reviews Header -->
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+                    <h4 style="font-size:0.95rem; color:var(--text-primary); margin:0;">
+                        Classified Customer Reviews (${json.reviews ? json.reviews.length : 0})
+                    </h4>
+                    <span style="font-size:0.75rem; color:var(--text-muted);">Deterministic Lexicon &bull; Negation Handled</span>
+                </div>
+
+                <div style="display:flex; flex-direction:column; gap:0.25rem;">
+                    ${reviewsListHtml}
+                </div>
+            `;
+        }
+    } catch (err) {
+        console.error("Error inspecting product reviews:", err);
+        if (content) content.innerHTML = `<p style="color:var(--accent-rose);">Error communicating with review intelligence API.</p>`;
+    }
+}
+
+function closeAdminReviewInspector() {
+    const modal = document.getElementById("adminReviewInspectorModal");
+    if (modal) modal.style.display = "none";
+}
+
+// Window bindings for Phase 8 functions
+window.loadAdminReviewIntelligence = loadAdminReviewIntelligence;
+window.filterReviewCatalog = filterReviewCatalog;
+window.handleReviewSearchInput = handleReviewSearchInput;
+window.openAdminReviewInspector = openAdminReviewInspector;
+window.closeAdminReviewInspector = closeAdminReviewInspector;
+
 
 

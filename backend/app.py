@@ -16,6 +16,7 @@ sys.path.insert(0, BASE_DIR)
 
 from ai.recommender import ProductRecommender
 from ai.business_intelligence import BusinessIntelligenceEngine
+from ai.sentiment_analyzer import ReviewSentimentAnalyzer
 from database.transactions import checkout_cart, get_db_connection
 
 app = Flask(__name__, static_folder=os.path.join(BASE_DIR, "frontend"), static_url_path="")
@@ -24,6 +25,7 @@ CORS(app)
 DB_PATH = os.path.join(BASE_DIR, "database", "ecommerce.db")
 recommender = ProductRecommender(DB_PATH)
 bi_engine = BusinessIntelligenceEngine(DB_PATH)
+review_analyzer = ReviewSentimentAnalyzer(DB_PATH)
 
 
 @app.route("/")
@@ -161,6 +163,9 @@ def get_product_details(product_id):
     # Similar products from Content-Based engine
     similar_products = recommender.content_engine.recommend_similar_products(product_id, top_n=4)
 
+    # Phase 8: AI Review Intelligence & Sentiment Analysis
+    review_intel = review_analyzer.get_product_review_intelligence(product_id)
+
     return jsonify({
         "status": "success",
         "product": {
@@ -175,6 +180,7 @@ def get_product_details(product_id):
             "avg_rating": prod[8] or 4.5,
             "review_count": prod[9] or 0,
             "reviews": reviews,
+            "review_intelligence": review_intel,
             "frequently_bought": frequently_bought,
             "similar_products": similar_products
         }
@@ -351,6 +357,54 @@ def get_admin_ai_insights():
     """Phase 7: Actionable business insights derived directly from database transactions."""
     try:
         data = bi_engine.get_ai_insights()
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+# =============================================================================
+# PHASE 8: AI REVIEW INTELLIGENCE & SENTIMENT ANALYSIS ENDPOINTS
+# =============================================================================
+
+@app.route("/api/products/<product_id>/review-intelligence", methods=["GET"])
+@app.route("/api/product/<product_id>/review-intelligence", methods=["GET"])
+def get_product_review_intelligence(product_id):
+    """
+    Phase 8: Extract explainable sentiment, product health scorecard, 
+    aspect themes, and concise customer summary from reviews table.
+    """
+    try:
+        data = review_analyzer.get_product_review_intelligence(product_id)
+        if data.get("status") == "error":
+            return jsonify(data), 404
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route("/api/admin/review-intelligence", methods=["GET"])
+def get_admin_review_intelligence():
+    """
+    Phase 8: Catalog-wide review intelligence matrix for admin portal.
+    Supports filtering by 'all', 'most_positive', 'most_negative', 'most_reviewed', 'mismatched'.
+    """
+    filter_type = request.args.get("filter", "all").strip().lower()
+    try:
+        data = review_analyzer.get_catalog_review_intelligence(filter_type=filter_type)
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route("/api/admin/product/<product_id>/review-intelligence", methods=["GET"])
+def get_admin_product_review_intelligence(product_id):
+    """
+    Phase 8: Deep-dive inspector endpoint for admin review drilldown.
+    """
+    try:
+        data = review_analyzer.get_product_review_intelligence(product_id)
+        if data.get("status") == "error":
+            return jsonify(data), 404
         return jsonify(data)
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500

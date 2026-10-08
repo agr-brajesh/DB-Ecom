@@ -785,6 +785,10 @@
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
                         Product Intelligence
                     </button>
+                    <button class="admin-nav-item" data-admin-tab="review-intelligence" onclick="switchAdminTab('review-intelligence')">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><polyline points="9 10 12 12 15 10"/></svg>
+                        Review Intelligence
+                    </button>
                     <button class="admin-nav-item" data-admin-tab="ai-insights" onclick="switchAdminTab('ai-insights')">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
                         AI Business Insights
@@ -1148,6 +1152,88 @@
                 </div>
 
                 <!-- ==========================================================
+                     PHASE 8 TAB: REVIEW INTELLIGENCE & SENTIMENT ANALYSIS
+                     ========================================================== -->
+                <div id="admin-tab-review-intelligence" class="admin-tab-pane">
+                    <div class="admin-pane-header">
+                        <div>
+                            <h2>Review Intelligence &amp; Sentiment Analytics</h2>
+                            <p class="admin-subtitle">Explainable NLP sentiment parsing, aspect theme discovery, recency trends, and rating/text mismatch signals</p>
+                        </div>
+                        <span class="badge-pill-academic" style="background:rgba(99,102,241,0.15); color:#a5b4fc; border-color:rgba(99,102,241,0.3);">Phase 8: Review Intelligence</span>
+                    </div>
+
+                    <!-- Review Intelligence KPIs -->
+                    <div class="admin-kpi-grid">
+                        <div class="kpi-card">
+                            <span class="kpi-label">Reviews Analyzed</span>
+                            <h3 class="kpi-val" id="revKpiTotalReviews">--</h3>
+                            <span class="kpi-sub">Across active catalog SKUs</span>
+                        </div>
+                        <div class="kpi-card">
+                            <span class="kpi-label">Catalog Sentiment Score</span>
+                            <h3 class="kpi-val" id="revKpiAvgSentiment">--</h3>
+                            <span class="kpi-sub">Normalized [0.0 &ndash; 1.0] scale</span>
+                        </div>
+                        <div class="kpi-card">
+                            <span class="kpi-label">Positive Sentiment Share</span>
+                            <h3 class="kpi-val" id="revKpiPosShare" style="color:#34d399;">--%</h3>
+                            <span class="kpi-sub">Positive sentiment ratio</span>
+                        </div>
+                        <div class="kpi-card">
+                            <span class="kpi-label">Review / Rating Signals</span>
+                            <h3 class="kpi-val" id="revKpiMismatches" style="color:#fbbf24;">--</h3>
+                            <span class="kpi-sub">Flagged text/star disagreements</span>
+                        </div>
+                    </div>
+
+                    <!-- Filter Buttons & Controls -->
+                    <div class="admin-card">
+                        <div class="ci-table-controls-row">
+                            <div>
+                                <h3>Product Review Intelligence Matrix</h3>
+                                <p class="view-intro">Comprehensive breakdown of customer feedback polarity, domain aspect themes, and trend momentum.</p>
+                            </div>
+                            <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">
+                                <input type="text" id="revSearchInput" class="admin-search-input" placeholder="Search SKU or product..." oninput="handleReviewSearchInput()">
+                            </div>
+                        </div>
+
+                        <div class="review-filter-bar">
+                            <button class="review-filter-btn active" data-rev-filter="all" onclick="filterReviewCatalog('all')">All Products</button>
+                            <button class="review-filter-btn" data-rev-filter="most_positive" onclick="filterReviewCatalog('most_positive')">Most Positively Reviewed</button>
+                            <button class="review-filter-btn" data-rev-filter="most_negative" onclick="filterReviewCatalog('most_negative')">Most Negative Products</button>
+                            <button class="review-filter-btn" data-rev-filter="most_reviewed" onclick="filterReviewCatalog('most_reviewed')">Most Reviewed</button>
+                            <button class="review-filter-btn" data-rev-filter="mismatched" onclick="filterReviewCatalog('mismatched')">⚠️ Rating / Text Mismatches</button>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>SKU</th>
+                                        <th>Product Name</th>
+                                        <th>Category</th>
+                                        <th>Rating</th>
+                                        <th>Reviews</th>
+                                        <th>Sentiment Breakdown</th>
+                                        <th>Score</th>
+                                        <th>What Customers Like</th>
+                                        <th>Complaints / Watch</th>
+                                        <th>Recent Trend</th>
+                                        <th>Review Signals</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="revCatalogTableBody">
+                                    <tr><td colspan="12" style="text-align:center; color:var(--text-muted);">Loading review intelligence...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ==========================================================
                      PHASE 7 TAB 4: AI BUSINESS INSIGHTS
                      ========================================================== -->
                 <div id="admin-tab-ai-insights" class="admin-tab-pane">
@@ -1477,6 +1563,26 @@
                     </div>
                 </div>
 
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================================
+         ADMIN REVIEW INSPECTOR MODAL (PHASE 8)
+         ========================================================== -->
+    <div class="review-inspector-modal" id="adminReviewInspectorModal" style="display:none;">
+        <div class="review-inspector-dialog">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1.25rem;">
+                <div>
+                    <span class="badge-pill-academic" style="margin-bottom:0.4rem; display:inline-block;">PRODUCT REVIEW DRILLDOWN</span>
+                    <h2 id="inspectorProdName" style="font-family:var(--font-heading); font-size:1.4rem; color:var(--text-primary); margin:0;">Product Name</h2>
+                    <p id="inspectorProdCategory" style="color:var(--text-muted); font-size:0.85rem; margin-top:0.2rem;">SKU: P000 &bull; Category</p>
+                </div>
+                <button class="modal-close-btn" onclick="closeAdminReviewInspector()" aria-label="Close inspector">&times;</button>
+            </div>
+
+            <div id="inspectorContent">
+                <!-- Populated dynamically via JS -->
             </div>
         </div>
     </div>
